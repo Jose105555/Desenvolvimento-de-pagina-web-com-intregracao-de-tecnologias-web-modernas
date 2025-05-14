@@ -1,0 +1,29 @@
+[
+  {
+    "id": "uuid-1",
+    "name": "José",
+    "phone": "848583746",
+    "email": "jm3136014@gmail.com",
+    "category": "Amigos",
+    "birthday": "2004-06-27",
+    "createdBy": "jose"
+  },
+  {
+    "id": "uuid-2",
+    "name": "Maria",
+    "phone": "849123456",
+    "email": "maria@example.com",
+    "category": "Família",
+    "birthday": "1990-05-14",
+    "createdBy": "admin"
+  },
+  {
+    "id": "uuid-3",
+    "name": "Pedro",
+    "phone": "847654321",
+    "email": "pedro@invalid",
+    "category": "Trabalho",
+    "birthday": "1985-05-20",
+    "createdBy": "admin"
+  }
+]

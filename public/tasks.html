@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda de Contatos - Tarefas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Agenda de Contatos</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" href="/index.html">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/contactos.html">Contatos</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="/tasks.html">Tarefas</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/chat.html">Chat</a>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Relatórios
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="reportsDropdown">
+              <li><a class="dropdown-item" href="#">Contatos por Categoria</a></li>
+              <li><a class="dropdown-item" href="#">Contatos Ativos vs. Inativos</a></li>
+              <li><a class="dropdown-item" href="#">Atualizações Recentes</a></li>
+              <li><a class="dropdown-item" href="#">Aniversários de Contatos</a></li>
+              <li><a class="dropdown-item" href="#">Frequência de Interação</a></li>
+              <li><a class="dropdown-item" href="#">Crescimento da Base</a></li>
+              <li><a class="dropdown-item" href="#">Falhas de Contato</a></li>
+            </ul>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/logout">Sair</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <h2>Lista de Tarefas</h2>
+    <div class="card mb-3">
+      <div class="card-body">
+        <form id="taskForm">
+          <div class="mb-3">
+            <label for="taskTitle" class="form-label">Título</label>
+            <input type="text" class="form-control" id="taskTitle" required>
+          </div>
+          <div class="mb-3">
+            <label for="taskDescription" class="form-label">Descrição</label>
+            <textarea class="form-control" id="taskDescription" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="taskDueDate" class="form-label">Prazo</label>
+            <input type="date" class="form-control" id="taskDueDate">
+          </div>
+          <button type="submit" class="btn btn-primary">Adicionar Tarefa</button>
+        </form>
+      </div>
+    </div>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Título</th>
+          <th>Descrição</th>
+          <th>Prazo</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="taskList">
+        <!-- Tarefas serão adicionadas dinamicamente -->
+      </tbody>
+    </table>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.getElementById('taskForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      alert('Funcionalidade de tarefas não implementada no backend. Adicione a lógica no servidor.');
+      // Aqui você pode adicionar lógica para enviar a tarefa ao servidor via fetch
+    });
+  </script>
+</body>
+</html>

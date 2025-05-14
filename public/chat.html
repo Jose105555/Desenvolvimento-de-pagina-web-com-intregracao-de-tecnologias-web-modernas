@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda de Contatos - Chat</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Agenda de Contatos</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" href="/index.html">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="/chat.html">Chat</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/logout">Sair</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <h2>Chat em Tempo Real</h2>
+    <div class="card">
+      <div class="card-body">
+        <div id="chatMessages" class="mb-3" style="height: 300px; overflow-y: auto;"></div>
+        <div class="input-group">
+          <input type="text" id="chatInput" class="form-control" placeholder="Digite sua mensagem...">
+          <button class="btn btn-primary" onclick="sendMessage()">Enviar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let ws;
+    const username = localStorage.getItem('username') || prompt('Digite seu username:');
+
+    if (username) {
+      localStorage.setItem('username', username);
+      ws = new WebSocket('ws://localhost:3001/chat');
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ username }));
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+        const messagesDiv = document.getElementById('chatMessages');
+        const messageElement = document.createElement('p');
+        messageElement.textContent = `${data.sender}: ${data.message}`;
+        messagesDiv.appendChild(messageElement);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      };
+
+      ws.onclose = () => {
+        alert('Conexão com o chat encerrada.');
+      };
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      if (message && ws) {
+        ws.send(JSON.stringify({ message }));
+        input.value = '';
+      }
+    }
+
+    document.getElementById('chatInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>
