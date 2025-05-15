@@ -1,504 +1,470 @@
+/* Importa o módulo Express para criar o roteador */
 const express = require('express');
+/* Importa o módulo JSON Web Token para autenticação */
+const jwt = require('jsonwebtoken');
+/* Importa o módulo File System para leitura e escrita de arquivos */
+const fs = require('fs');
+/* Importa o módulo Path para manipulação de caminhos de arquivos */
+const path = require('path');
+/* Cria uma instância do roteador Express */
 const router = express.Router();
-const { v4: uuidv4 } = require('uuid');
-const bcrypt = require('bcrypt');
 
-// Middleware para verificar autenticação
-function ensureAuthenticated(req, res, next) {
-  const username = req.headers['x-username'];
-  if (!username) {
-    console.warn('Autenticação falhou: x-username ausente');
-    return res.status(401).json({ error: 'Usuário não autenticado' });
-  }
-  req.db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-    if (err) {
-      console.error('Erro ao verificar autenticação:', err.message);
-      return res.status(500).json({ error: 'Erro interno do servidor', details: err.message });
-    }
-    if (!user) {
-      console.warn('Usuário não encontrado:', username);
-      return res.status(401).json({ error: 'Usuário não encontrado' });
-    }
-    req.user = user;
+/* Define a chave secreta para assinar e verificar tokens JWT */
+const JWT_SECRET = 'your_jwt_secret';
+/* Define o caminho para o arquivo de banco de dados JSON */
+const DB_FILE = path.join(__dirname, 'database.json');
+
+/* Middleware de autenticação para verificar tokens JWT */
+const authenticate = (req, res, next) => {
+  /* Extrai o token do cabeçalho Authorization (formato: Bearer <token>) */
+  const token = req.headers.authorization?.split(' ')[1];
+  /* Verifica se o token foi fornecido */
+  if (!token) return res.status(401).json({ success: false, message: 'Token não fornecido' });
+  try {
+    /* Verifica o token JWT e armazena os dados do usuário na requisição */
+    req.user = jwt.verify(token, JWT_SECRET);
+    /* Prossegue para o próximo middleware ou rota */
     next();
-  });
-}
-
-// Middleware para verificar admin
-function ensureAdmin(req, res, next) {
-  if (req.user.role !== 'admin') {
-    console.warn(`Acesso negado: ${req.user.username} não é admin`);
-    return res.status(403).json({ error: 'Acesso negado: apenas administradores' });
+  } catch (e) {
+    /* Retorna erro se o token for inválido */
+    res.status(401).json({ success: false, message: 'Token inválido' });
   }
-  next();
-}
+};
 
-// Rota de registro
-router.post('/register', (req, res) => {
-  const { username, password, email, role } = req.body;
-  console.log('Tentando registrar:', { username, email, role });
-  if (!username || !password) {
-    console.warn('Username ou senha ausentes');
-    return res.status(400).json({ error: 'Username e senha são obrigatórios' });
-  }
-  if (!['user', 'admin'].includes(role)) {
-    console.warn('Papel inválido:', role);
-    return res.status(400).json({ error: 'Papel inválido. Use "user" ou "admin"' });
-  }
-  req.db.get('SELECT username, email FROM users WHERE username = ? OR email = ?', [username, email], (err, existingUser) => {
-    if (err) {
-      console.error('Erro ao verificar usuário:', err.message);
-      return res.status(500).json({ error: 'Erro interno do servidor', details: err.message });
-    }
-    if (existingUser) {
-      console.warn('Usuário ou e-mail já existe:', username, email);
-      return res.status(400).json({ error: 'Usuário ou e-mail já existe' });
-    }
-    const hashedPassword = bcrypt.hashSync(password, 10);
-    const newUser = {
-      username,
-      password: hashedPassword,
-      email: email || '',
-      birthdate: '',
-      specialDate: '',
-      role,
-      createdAt: new Date().toISOString(),
-      lastLogin: null
-    };
-    req.db.run(`
-      INSERT INTO users (username, password, email, birthdate, specialDate, role, createdAt, lastLogin)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      newUser.username,
-      newUser.password,
-      newUser.email,
-      newUser.birthdate,
-      newUser.specialDate,
-      newUser.role,
-      newUser.createdAt,
-      newUser.lastLogin
-    ], (err) => {
-      if (err) {
-        console.error('Erro ao registrar usuário:', err.message);
-        return res.status(500).json({ error: 'Erro ao registrar usuário', details: err.message });
-      }
-      console.log('Usuário registrado:', newUser.username);
-      res.status(201).json({ message: 'Registro bem-sucedido', user: newUser });
-    });
-  });
-});
-
-// Rota de login
+/* Rota para login de usuários */
 router.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  console.log('Iniciando login para:', { username });
-  if (!username || !password) {
-    console.warn('Username ou senha ausentes');
-    return res.status(400).json({ error: 'Username e senha são obrigatórios' });
+  /* Extrai os dados do corpo da requisição */
+  const { name, password, role } = req.body;
+  /* Validações básicas no lado do servidor */
+  if (!name) return res.status(400).json({ success: false, message: 'O campo Nome é obrigatório' });
+  if (!password) return res.status(400).json({ success: false, message: 'O campo Senha é obrigatório' });
+  if (!role) return res.status(400).json({ success: false, message: 'O campo Função é obrigatório' });
+
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Procura um usuário com nome, senha e função correspondentes */
+    const user = db.users.find(u => u.name === name && u.password === password && u.role === role);
+    /* Retorna erro se o usuário não for encontrado */
+    if (!user) return res.status(401).json({ success: false, message: 'Credenciais ou função inválidas' });
+    /* Gera um token JWT com ID, nome e função do usuário, válido por 1 hora */
+    const token = jwt.sign({ id: user.id, name: user.name, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+    /* Retorna o token e os dados do usuário */
+    res.json({ success: true, token, user: { id: user.id, name: user.name, role: user.role } });
+  } catch (e) {
+    /* Loga e retorna erro se houver falha na leitura do banco de dados */
+    console.error('Erro ao ler banco de dados:', e.message);
+    res.status(500).json({ success: false, message: 'Erro ao processar login' });
   }
-  req.db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-    if (err) {
-      console.error('Erro ao verificar login:', err.message);
-      return res.status(500).json({ error: 'Erro interno do servidor', details: err.message });
-    }
-    if (!user) {
-      console.warn('Usuário não encontrado:', username);
-      return res.status(401).json({ error: 'Usuário não encontrado' });
-    }
-    if (!bcrypt.compareSync(password, user.password)) {
-      console.warn('Senha incorreta para usuário:', username);
-      return res.status(401).json({ error: 'Senha incorreta' });
-    }
-    console.log('Login bem-sucedido:', { username, role: user.role });
-    req.db.run('UPDATE users SET lastLogin = ? WHERE username = ?', [new Date().toISOString(), username], (err) => {
-      if (err) console.error('Erro ao atualizar lastLogin:', err.message);
-    });
-    res.json({ username: user.username, role: user.role, email: user.email, message: 'Login bem-sucedido' });
-  });
 });
 
-// Rota de logout
-router.get('/logout', (req, res) => {
-  console.log('Logout requisitado');
-  res.json({ message: 'Logout bem-sucedido' });
-});
+/* Rota para registro de novos usuários */
+router.post('/register', (req, res) => {
+  /* Extrai os dados do corpo da requisição */
+  const { name, email, password, date, specialDate, role } = req.body;
+  /* Validações básicas no lado do servidor */
+  if (!name) return res.status(400).json({ success: false, message: 'O campo Nome é obrigatório' });
+  if (!email) return res.status(400).json({ success: false, message: 'O campo Email é obrigatório' });
+  if (!email.includes('@')) return res.status(400).json({ success: false, message: 'Email inválido' });
+  if (!password) return res.status(400).json({ success: false, message: 'O campo Senha é obrigatório' });
+  if (!date) return res.status(400).json({ success: false, message: 'O campo Data de Nascimento é obrigatório' });
+  if (!specialDate) return res.status(400).json({ success: false, message: 'O campo Data Especial é obrigatório' });
+  if (!role) return res.status(400).json({ success: false, message: 'O campo Função é obrigatório' });
 
-// CRUD de Usuários
-router.get('/users', ensureAuthenticated, ensureAdmin, (req, res) => {
-  req.db.all('SELECT * FROM users', (err, users) => {
-    if (err) {
-      console.error('Erro ao carregar usuários:', err.message);
-      return res.status(500).json({ error: 'Erro ao carregar usuários', details: err.message });
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Verifica se o nome já está registrado */
+    if (db.users.find(u => u.name === name)) {
+      return res.status(400).json({ success: false, message: 'Nome já registrado' });
     }
-    console.log('Usuários carregados:', users.length);
-    res.json(users);
-  });
-});
-
-router.post('/users', ensureAuthenticated, ensureAdmin, (req, res) => {
-  const { username, password, email, birthdate, specialDate, role } = req.body;
-  req.db.get('SELECT username, email FROM users WHERE username = ? OR email = ?', [username, email], (err, existingUser) => {
-    if (err) {
-      console.error('Erro ao verificar usuário:', err.message);
-      return res.status(500).json({ error: 'Erro ao adicionar usuário', details: err.message });
+    /* Verifica se o email já está registrado */
+    if (db.users.find(u => u.email === email)) {
+      return res.status(400).json({ success: false, message: 'Email já registrado' });
     }
-    if (existingUser) {
-      console.warn('Usuário ou e-mail já existe:', username, email);
-      return res.status(400).json({ error: 'Usuário ou e-mail já existe' });
-    }
-    const hashedPassword = bcrypt.hashSync(password, 10);
-    const newUser = {
-      username,
-      password: hashedPassword,
-      email: email || '',
-      birthdate: birthdate || '',
-      specialDate: specialDate || '',
-      role: role || 'user',
-      createdAt: new Date().toISOString(),
-      lastLogin: null
-    };
-    req.db.run(`
-      INSERT INTO users (username, password, email, birthdate, specialDate, role, createdAt, lastLogin)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      newUser.username,
-      newUser.password,
-      newUser.email,
-      newUser.birthdate,
-      newUser.specialDate,
-      newUser.role,
-      newUser.createdAt,
-      newUser.lastLogin
-    ], (err) => {
-      if (err) {
-        console.error('Erro ao adicionar usuário:', err.message);
-        return res.status(500).json({ error: 'Erro ao adicionar usuário', details: err.message });
-      }
-      console.log('Usuário salvo:', newUser.username);
-      res.status(201).json(newUser);
-    });
-  });
-});
-
-router.delete('/users/:username', ensureAuthenticated, ensureAdmin, (req, res) => {
-  if (req.params.username === req.user.username) {
-    console.warn('Tentativa de autoexclusão:', req.user.username);
-    return res.status(400).json({ error: 'Não é possível excluir o próprio usuário' });
+    /* Gera um novo ID baseado no tamanho da lista de usuários */
+    const id = (db.users.length + 1).toString();
+    /* Adiciona o novo usuário ao banco de dados */
+    db.users.push({ id, name, email, password, date, specialDate, role });
+    /* Salva as alterações no banco de dados */
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    /* Retorna mensagem de sucesso */
+    res.json({ success: true, message: 'Usuário registrado com sucesso' });
+  } catch (e) {
+    /* Loga e retorna erro se houver falha na escrita do banco de dados */
+    console.error('Erro ao escrever no banco de dados:', e.message);
+    res.status(500).json({ success: false, message: 'Erro ao processar registro' });
   }
-  req.db.run('DELETE FROM users WHERE username = ?', [req.params.username], (err) => {
-    if (err) {
-      console.error('Erro ao excluir usuário:', err.message);
-      return res.status(500).json({ error: 'Erro ao excluir usuário', details: err.message });
-    }
-    console.log('Usuário excluído:', req.params.username);
-    res.status(204).send();
-  });
 });
 
-// CRUD de Contatos
-router.get('/contacts', ensureAuthenticated, (req, res) => {
-  const query = req.user.role === 'admin'
-    ? 'SELECT * FROM contacts'
-    : 'SELECT * FROM contacts WHERE createdBy = ?';
-  const params = req.user.role === 'admin' ? [] : [req.user.username];
-  req.db.all(query, params, (err, contacts) => {
-    if (err) {
-      console.error('Erro ao carregar contatos:', err.message);
-      return res.status(500).json({ error: 'Erro ao carregar contatos', details: err.message });
+/* Rota para adicionar usuário (apenas administradores) */
+router.post('/users', authenticate, (req, res) => {
+  /* Verifica se o usuário é administrador */
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Acesso negado' });
+  }
+  /* Extrai os dados do corpo da requisição */
+  const { name, email, password, date, specialDate, role } = req.body;
+  /* Validações básicas no lado do servidor */
+  if (!name) return res.status(400).json({ success: false, message: 'O campo Nome é obrigatório' });
+  if (!email) return res.status(400).json({ success: false, message: 'O campo Email é obrigatório' });
+  if (!email.includes('@')) return res.status(400).json({ success: false, message: 'Email inválido' });
+  if (!password) return res.status(400).json({ success: false, message: 'O campo Senha é obrigatório' });
+  if (password.length < 6) return res.status(400).json({ success: false, message: 'A senha deve ter pelo menos 6 caracteres' });
+  if (!date) return res.status(400).json({ success: false, message: 'O campo Data de Nascimento é obrigatório' });
+  if (!specialDate) return res.status(400).json({ success: false, message: 'O campo Data Especial é obrigatório' });
+  if (!['user', 'admin'].includes(role)) return res.status(400).json({ success: false, message: 'Função inválida' });
+
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Verifica se o nome já está registrado */
+    if (db.users.find(u => u.name === name)) {
+      return res.status(400).json({ success: false, message: 'Nome já registrado' });
     }
-    console.log('Contatos carregados:', contacts.length);
+    /* Verifica se o email já está registrado */
+    if (db.users.find(u => u.email === email)) {
+      return res.status(400).json({ success: false, message: 'Email já registrado' });
+    }
+    /* Gera um novo ID baseado no tamanho da lista de usuários */
+    const id = (db.users.length + 1).toString();
+    /* Adiciona o novo usuário ao banco de dados */
+    db.users.push({ id, name, email, password, date, specialDate, role });
+    /* Salva as alterações no banco de dados */
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    /* Retorna mensagem de sucesso */
+    res.json({ success: true, message: 'Usuário adicionado com sucesso' });
+  } catch (e) {
+    /* Loga e retorna erro se houver falha na escrita do banco de dados */
+    console.error('Erro ao escrever no banco de dados:', e.message);
+    res.status(500).json({ success: false, message: 'Erro ao adicionar usuário' });
+  }
+});
+
+/* Rota para recuperação de senha (simulada) */
+router.post('/forgot-password', (req, res) => {
+  /* Extrai o email do corpo da requisição */
+  const { email } = req.body;
+  /* Valida o campo email */
+  if (!email) return res.status(400).json({ success: false, message: 'Email é obrigatório' });
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Verifica se o email está registrado */
+    if (!db.users.find(u => u.email === email)) {
+      return res.status(404).json({ success: false, message: 'Email não encontrado' });
+    }
+    /* Retorna mensagem simulando o envio de um link de recuperação */
+    res.json({ success: true, message: 'Link de recuperação enviado (simulado)' });
+  } catch (e) {
+    /* Loga e retorna erro se houver falha na leitura do banco de dados */
+    console.error('Erro ao processar recuperação:', e.message);
+    res.status(500).json({ success: false, message: 'Erro ao processar recuperação' });
+  }
+});
+
+/* Rota para listar contatos */
+router.get('/contacts', authenticate, (req, res) => {
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Filtra os contatos pertencentes ao usuário ou todos se for administrador */
+    const contacts = db.contacts.filter(c => c.userId === req.user.id || req.user.role === 'admin');
+    /* Retorna a lista de contatos */
     res.json(contacts);
-  });
+  } catch (e) {
+    /* Retorna erro se houver falha na leitura do banco de dados */
+    res.status(500).json({ success: false, message: 'Erro ao carregar contatos' });
+  }
 });
 
-router.post('/contacts', ensureAuthenticated, (req, res) => {
-  const { name, phone, email, category, birthday } = req.body;
-  const phoneRegex = /^(\+258)?\d{9}$/;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!name || !phone) {
-    console.warn('Nome ou telefone ausentes');
-    return res.status(400).json({ error: 'Nome e telefone são obrigatórios' });
+/* Rota para adicionar um novo contato */
+router.post('/contacts', authenticate, (req, res) => {
+  /* Extrai os dados do corpo da requisição */
+  const { name, phone, email, category, specialDate } = req.body;
+  /* Validações básicas no lado do servidor */
+  if (!name) return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
+  if (!phone) return res.status(400).json({ success: false, message: 'Telefone é obrigatório' });
+  if (!category) return res.status(400).json({ success: false, message: 'Categoria é obrigatória' });
+  if (!phone.startsWith('+258') || phone.replace('+258', '').length !== 9) {
+    return res.status(400).json({ success: false, message: 'Telefone deve começar com +258 e ter 9 dígitos' });
   }
-  if (!phoneRegex.test(phone)) {
-    console.warn('Telefone inválido:', phone);
-    return res.status(400).json({ error: 'Telefone deve ter 9 dígitos ou começar com +258 seguido de 9 dígitos' });
-  }
-  if (email && !emailRegex.test(email)) {
-    console.warn('E-mail inválido:', email);
-    return res.status(400).json({ error: 'E-mail inválido' });
-  }
-  const newContact = {
-    id: uuidv4(),
-    name,
-    phone,
-    email: email || '',
-    category: category || '',
-    birthday: birthday || '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    interactions: 0,
-    lastInteraction: null,
-    createdBy: req.user.username,
-    isValid: true
-  };
-  req.db.run(`
-    INSERT INTO contacts (id, name, phone, email, category, birthday, createdAt, updatedAt, interactions, lastInteraction, createdBy, isValid)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
-    newContact.id,
-    newContact.name,
-    newContact.phone,
-    newContact.email,
-    newContact.category,
-    newContact.birthday,
-    newContact.createdAt,
-    newContact.updatedAt,
-    newContact.interactions,
-    newContact.lastInteraction,
-    newContact.createdBy,
-    newContact.isValid
-  ], (err) => {
-    if (err) {
-      console.error('Erro ao adicionar contato:', err.message);
-      return res.status(500).json({ error: 'Erro ao adicionar contato', details: err.message });
-    }
-    console.log('Contato adicionado:', newContact.name);
-    res.status(201).json(newContact);
-  });
-});
-
-router.put('/contacts/:id', ensureAuthenticated, (req, res) => {
-  const { name, phone, email, category, birthday } = req.body;
-  const phoneRegex = /^(\+258)?\d{9}$/;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!name || !phone) {
-    console.warn('Nome ou telefone ausentes');
-    return res.status(400).json({ error: 'Nome e telefone são obrigatórios' });
-  }
-  if (!phoneRegex.test(phone)) {
-    console.warn('Telefone inválido:', phone);
-    return res.status(400).json({ error: 'Telefone deve ter 9 dígitos ou começar com +258 seguido de 9 dígitos' });
-  }
-  if (email && !emailRegex.test(email)) {
-    console.warn('E-mail inválido:', email);
-    return res.status(400).json({ error: 'E-mail inválido' });
-  }
-  req.db.get('SELECT * FROM contacts WHERE id = ? AND createdBy = ?', [req.params.id, req.user.username], (err, contact) => {
-    if (err) {
-      console.error('Erro ao verificar contato:', err.message);
-      return res.status(500).json({ error: 'Erro ao atualizar contato', details: err.message });
-    }
-    if (!contact && req.user.role !== 'admin') {
-      console.warn('Acesso negado ou contato não encontrado:', req.params.id);
-      return res.status(403).json({ error: 'Acesso negado ou contato não encontrado' });
-    }
-    req.db.run(`
-      UPDATE contacts
-      SET name = ?, phone = ?, email = ?, category = ?, birthday = ?, updatedAt = ?, isValid = ?
-      WHERE id = ?
-    `, [
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Gera um novo ID baseado no tamanho da lista de contatos */
+    const id = (db.contacts.length + 1).toString();
+    /* Cria o objeto de contato com os dados fornecidos */
+    const contact = {
+      id,
+      userId: req.user.id,
       name,
       phone,
-      email || '',
-      category || '',
-      birthday || '',
-      new Date().toISOString(),
-      true,
-      req.params.id
-    ], (err) => {
-      if (err) {
-        console.error('Erro ao atualizar contato:', err.message);
-        return res.status(500).json({ error: 'Erro ao atualizar contato', details: err.message });
-      }
-      console.log('Contato atualizado:', req.params.id);
-      res.json({ message: 'Contato atualizado' });
+      email: email || '',
+      category,
+      specialDate: specialDate || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    /* Adiciona o contato ao banco de dados */
+    db.contacts.push(contact);
+    /* Salva as alterações no banco de dados */
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    /* Retorna o contato adicionado */
+    res.json({ success: true, contact });
+  } catch (e) {
+    /* Retorna erro se houver falha na escrita do banco de dados */
+    res.status(500).json({ success: false, message: 'Erro ao adicionar contato' });
+  }
+});
+
+/* Rota para atualizar um contato existente */
+router.put('/contacts/:id', authenticate, (req, res) => {
+  /* Extrai o ID do contato dos parâmetros da URL */
+  const { id } = req.params;
+  /* Extrai os dados do corpo da requisição */
+  const { name, phone, email, category, specialDate } = req.body;
+  /* Validações básicas no lado do servidor */
+  if (!name) return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
+  if (!phone) return res.status(400).json({ success: false, message: 'Telefone é obrigatório' });
+  if (!category) return res.status(400).json({ success: false, message: 'Categoria é obrigatória' });
+  if (!phone.startsWith('+258') || phone.replace('+258', '').length !== 9) {
+    return res.status(400).json({ success: false, message: 'Telefone deve começar com +258 e ter 9 dígitos' });
+  }
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Procura o contato pelo ID, verificando se pertence ao usuário ou se é administrador */
+    const contact = db.contacts.find(c => c.id === id && (c.userId === req.user.id || req.user.role === 'admin'));
+    /* Retorna erro se o contato não for encontrado */
+    if (!contact) return res.status(404).json({ success: false, message: 'Contato não encontrado' });
+    /* Atualiza os dados do contato */
+    contact.name = name;
+    contact.phone = phone;
+    contact.email = email || '';
+    contact.category = category;
+    contact.specialDate = specialDate || '';
+    contact.updatedAt = new Date().toISOString();
+    /* Salva as alterações no banco de dados */
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    /* Retorna o contato atualizado */
+    res.json({ success: true, contact });
+  } catch (e) {
+    /* Retorna erro se houver falha na escrita do banco de dados */
+    res.status(500).json({ success: false, message: 'Erro ao atualizar contato' });
+  }
+});
+
+/* Rota para excluir um contato */
+router.delete('/contacts/:id', authenticate, (req, res) => {
+  /* Extrai o ID do contato dos parâmetros da URL */
+  const { id } = req.params;
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Procura o índice do contato pelo ID, verificando se pertence ao usuário ou se é administrador */
+    const index = db.contacts.findIndex(c => c.id === id && (c.userId === req.user.id || req.user.role === 'admin'));
+    /* Retorna erro se o contato não for encontrado */
+    if (index === -1) return res.status(404).json({ success: false, message: 'Contato não encontrado' });
+    /* Remove o contato do banco de dados */
+    db.contacts.splice(index, 1);
+    /* Salva as alterações no banco de dados */
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    /* Retorna mensagem de sucesso */
+    res.json({ success: true, message: 'Contato excluído' });
+  } catch (e) {
+    /* Retorna erro se houver falha na escrita do banco de dados */
+    res.status(500).json({ success: false, message: 'Erro ao excluir contato' });
+  }
+});
+
+/* Rota para obter um contato específico */
+router.get('/contacts/:id', authenticate, (req, res) => {
+  /* Extrai o ID do contato dos parâmetros da URL */
+  const { id } = req.params;
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Procura o contato pelo ID, verificando se pertence ao usuário ou se é administrador */
+    const contact = db.contacts.find(c => c.id === id && (c.userId === req.user.id || req.user.role === 'admin'));
+    /* Retorna erro se o contato não for encontrado */
+    if (!contact) return res.status(404).json({ success: false, message: 'Contato não encontrado' });
+    /* Retorna o contato */
+    res.json(contact);
+  } catch (e) {
+    /* Retorna erro se houver falha na leitura do banco de dados */
+    res.status(500).json({ success: false, message: 'Erro ao carregar contato' });
+  }
+});
+
+/* Rota para listar todos os usuários (apenas administradores) */
+router.get('/users', authenticate, (req, res) => {
+  /* Verifica se o usuário é administrador */
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Acesso negado' });
+  }
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Retorna a lista de usuários */
+    res.json(db.users);
+  } catch (e) {
+    /* Retorna erro se houver falha na leitura do banco de dados */
+    res.status(500).json({ success: false, message: 'Erro ao carregar usuários' });
+  }
+});
+
+/* Rota para excluir um usuário (apenas administradores) */
+router.delete('/users/:id', authenticate, (req, res) => {
+  /* Verifica se o usuário é administrador */
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Acesso negado' });
+  }
+  /* Extrai o ID do usuário dos parâmetros da URL */
+  const { id } = req.params;
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Procura o índice do usuário pelo ID */
+    const index = db.users.findIndex(u => u.id === id);
+    /* Retorna erro se o usuário não for encontrado */
+    if (index === -1) return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
+    /* Verifica se o usuário está tentando excluir a própria conta */
+    if (db.users[index].id === req.user.id) {
+      return res.status(400).json({ success: false, message: 'Não pode excluir a própria conta' });
+    }
+    /* Remove o usuário do banco de dados */
+    db.users.splice(index, 1);
+    /* Salva as alterações no banco de dados */
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    /* Retorna mensagem de sucesso */
+    res.json({ success: true, message: 'Usuário excluído' });
+  } catch (e) {
+    /* Retorna erro se houver falha na escrita do banco de dados */
+    res.status(500).json({ success: false, message: 'Erro ao excluir usuário' });
+  }
+});
+
+/* Rota para atualizar a função de um usuário (apenas administradores) */
+router.put('/users/:id/role', authenticate, (req, res) => {
+  /* Verifica se o usuário é administrador */
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Acesso negado' });
+  }
+  /* Extrai o ID do usuário dos parâmetros da URL */
+  const { id } = req.params;
+  /* Extrai a nova função do corpo da requisição */
+  const { role } = req.body;
+  /* Valida a função fornecida */
+  if (!['admin', 'user'].includes(role)) {
+    return res.status(400).json({ success: false, message: 'Função inválida' });
+  }
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Procura o usuário pelo ID */
+    const user = db.users.find(u => u.id === id);
+    /* Retorna erro se o usuário não for encontrado */
+    if (!user) return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
+    /* Verifica se o usuário está tentando alterar a própria função */
+    if (user.id === req.user.id) {
+      return res.status(400).json({ success: false, message: 'Não pode alterar a própria função' });
+    }
+    /* Atualiza a função do usuário */
+    user.role = role;
+    /* Salva as alterações no banco de dados */
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    /* Retorna mensagem de sucesso */
+    res.json({ success: true, message: 'Função atualizada' });
+  } catch (e) {
+    /* Retorna erro se houver falha na escrita do banco de dados */
+    res.status(500).json({ success: false, message: 'Erro ao atualizar função' });
+  }
+});
+
+/* Rota para gerar relatórios (apenas administradores) */
+router.get('/reports', authenticate, (req, res) => {
+  /* Verifica se o usuário é administrador */
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Acesso negado' });
+  }
+  try {
+    /* Lê o banco de dados JSON */
+    const db = JSON.parse(fs.readFileSync(DB_FILE));
+    /* Calcula a data de um mês atrás para relatórios de atividade recente */
+    const now = new Date();
+    const oneMonthAgo = new Date(now.setMonth(now.getMonth() - 1));
+
+    /* Relatório: Contatos por categoria */
+    const categoryReport = db.contacts.reduce((acc, c) => {
+      /* Incrementa a contagem para cada categoria, inicializando com 0 se não existir */
+      acc[c.category] = (acc[c.category] || 0) + 1;
+      return acc;
+    }, { Família: 0, Trabalho: 0, Amigos: 0, Clientes: 0 });
+
+    /* Relatório: Contatos ativos vs inativos (baseado em interações no último mês) */
+    const activeReport = {
+      active: db.interactions.filter(i => new Date(i.timestamp) > oneMonthAgo).length,
+      inactive: db.contacts.length - db.interactions.filter(i => new Date(i.timestamp) > oneMonthAgo).length
+    };
+
+    /* Relatório: Atualizações recentes (contatos atualizados no último mês) */
+    const updatesReport = db.contacts
+      .filter(c => new Date(c.updatedAt) > oneMonthAgo)
+      .map(c => ({ name: c.name, updatedAt: c.updatedAt }))
+      .slice(0, 10); /* Limita a 10 registros */
+
+    /* Relatório: Datas especiais dos contatos */
+    const specialDatesReport = db.contacts
+      .filter(c => c.specialDate)
+      .map(c => ({ name: c.name, specialDate: c.specialDate }))
+      .slice(0, 10); /* Limita a 10 registros */
+
+    /* Relatório: Frequência de interação por contato */
+    const interactionReport = db.interactions.reduce((acc, i) => {
+      /* Procura o contato associado à interação */
+      const contact = db.contacts.find(c => c.id === i.contactId);
+      /* Incrementa a contagem de interações para o contato */
+      if (contact) acc[contact.name] = (acc[contact.name] || 0) + 1;
+      return acc;
+    }, {});
+    const interactionList = Object.entries(interactionReport)
+      .map(([name, count]) => ({ name, count }))
+      .slice(0, 10); /* Limita a 10 registros */
+
+    /* Relatório: Crescimento da base de contatos por mês */
+    const growthReport = db.contacts.reduce((acc, c) => {
+      /* Formata a data de criação como mês e ano */
+      const month = new Date(c.createdAt).toLocaleString('pt', { month: 'long', year: 'numeric' });
+      /* Incrementa a contagem para o mês */
+      acc[month] = (acc[month] || 0) + 1;
+      return acc;
+    }, {});
+    const growthList = Object.entries(growthReport)
+      .map(([month, count]) => ({ month, count }))
+      .slice(0, 12); /* Limita a 12 registros */
+
+    /* Relatório: Falhas de contato (contatos com email ou telefone ausentes/inválidos) */
+    const failuresReport = db.contacts
+      .filter(c => !c.email || !c.phone || (c.email && !c.email.includes('@')))
+      .map(c => ({ name: c.name, issue: !c.email ? 'Email ausente' : !c.phone ? 'Telefone ausente' : 'Email inválido' }))
+      .slice(0, 10); /* Limita a 10 registros */
+
+    /* Retorna todos os relatórios em um objeto JSON */
+    res.json({
+      category: categoryReport,
+      active: activeReport,
+      updates: updatesReport,
+      specialDates: specialDatesReport,
+      interactions: interactionList,
+      growth: growthList,
+      failures: failuresReport
     });
-  });
+  } catch (e) {
+    /* Retorna erro se houver falha na leitura do banco de dados */
+    res.status(500).json({ success: false, message: 'Erro ao gerar relatórios' });
+  }
 });
 
-router.delete('/contacts/:id', ensureAuthenticated, (req, res) => {
-  req.db.get('SELECT * FROM contacts WHERE id = ? AND createdBy = ?', [req.params.id, req.user.username], (err, contact) => {
-    if (err) {
-      console.error('Erro ao verificar contato:', err.message);
-      return res.status(500).json({ error: 'Erro ao excluir contato', details: err.message });
-    }
-    if (!contact && req.user.role !== 'admin') {
-      console.warn('Acesso negado ou contato não encontrado:', req.params.id);
-      return res.status(403).json({ error: 'Acesso negado ou contato não encontrado' });
-    }
-    req.db.run('DELETE FROM contacts WHERE id = ?', [req.params.id], (err) => {
-      if (err) {
-        console.error('Erro ao excluir contato:', err.message);
-        return res.status(500).json({ error: 'Erro ao excluir contato', details: err.message });
-      }
-      console.log('Contato excluído:', req.params.id);
-      res.status(204).send();
-    });
-  });
-});
-
-// Registrar interação
-router.post('/contacts/:id/interact', ensureAuthenticated, (req, res) => {
-  req.db.get('SELECT * FROM contacts WHERE id = ?', [req.params.id], (err, contact) => {
-    if (err) {
-      console.error('Erro ao verificar contato:', err.message);
-      return res.status(500).json({ error: 'Erro ao registrar interação', details: err.message });
-    }
-    if (!contact) {
-      console.warn('Contato não encontrado:', req.params.id);
-      return res.status(404).json({ error: 'Contato não encontrado' });
-    }
-    req.db.run(`
-      UPDATE contacts
-      SET interactions = interactions + 1, lastInteraction = ?
-      WHERE id = ?
-    `, [new Date().toISOString(), req.params.id], (err) => {
-      if (err) {
-        console.error('Erro ao registrar interação:', err.message);
-        return res.status(500).json({ error: 'Erro ao registrar interação', details: err.message });
-      }
-      console.log('Interação registrada para contato:', req.params.id);
-      res.json({ message: 'Interação registrada' });
-    });
-  });
-});
-
-// Relatórios
-router.get('/reports/category', ensureAuthenticated, ensureAdmin, (req, res) => {
-  console.log(`Carregando relatório de contatos por categoria para ${req.user.username}`);
-  req.db.all(`
-    SELECT category, COUNT(*) as count
-    FROM contacts
-    GROUP BY category
-  `, (err, data) => {
-    if (err) {
-      console.error('Erro ao carregar relatório de categorias:', err.message);
-      return res.status(500).json({ error: 'Erro ao carregar relatório', details: err.message });
-    }
-    console.log('Relatório de categorias carregado:', data);
-    res.json(data);
-  });
-});
-
-router.get('/reports/active-inactive', ensureAuthenticated, ensureAdmin, (req, res) => {
-  console.log(`Carregando relatório de contatos ativos/inativos para ${req.user.username}`);
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  req.db.get(`
-    SELECT
-      (SELECT COUNT(*) FROM contacts WHERE lastInteraction >= ? OR lastInteraction IS NULL) as active,
-      (SELECT COUNT(*) FROM contacts WHERE lastInteraction < ? AND lastInteraction IS NOT NULL) as inactive
-  `, [thirtyDaysAgo.toISOString(), thirtyDaysAgo.toISOString()], (err, data) => {
-    if (err) {
-      console.error('Erro ao carregar relatório de ativos/inativos:', err.message);
-      return res.status(500).json({ error: 'Erro ao carregar relatório', details: err.message });
-    }
-    console.log('Relatório de ativos/inativos carregado:', data);
-    res.json(data);
-  });
-});
-
-router.get('/reports/recent-updates', ensureAuthenticated, ensureAdmin, (req, res) => {
-  console.log(`Carregando relatório de atualizações recentes para ${req.user.username}`);
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  req.db.all(`
-    SELECT name, updatedAt
-    FROM contacts
-    WHERE updatedAt >= ?
-    ORDER BY updatedAt DESC
-    LIMIT 10
-  `, [sevenDaysAgo.toISOString()], (err, data) => {
-    if (err) {
-      console.error('Erro ao carregar relatório de atualizações recentes:', err.message);
-      return res.status(500).json({ error: 'Erro ao carregar relatório', details: err.message });
-    }
-    console.log('Relatório de atualizações recentes carregado:', data);
-    res.json(data);
-  });
-});
-
-router.get('/reports/birthdays', ensureAuthenticated, ensureAdmin, (req, res) => {
-  console.log(`Carregando relatório de aniversários para ${req.user.username}`);
-  const today = new Date();
-  const month = today.getMonth() + 1;
-  const day = today.getDate();
-  req.db.all(`
-    SELECT name, birthday as date, 'Aniversário' as type
-    FROM contacts
-    WHERE CAST(SUBSTR(birthday, 6, 2) AS INTEGER) = ? 
-      AND CAST(SUBSTR(birthday, 9, 2) AS INTEGER) >= ?
-    LIMIT 10
-  `, [month, day], (err, data) => {
-    if (err) {
-      console.error('Erro ao carregar relatório de aniversários:', err.message);
-      return res.status(500).json({ error: 'Erro ao carregar relatório', details: err.message });
-    }
-    console.log('Relatório de aniversários carregado:', data);
-    res.json(data);
-  });
-});
-
-router.get('/reports/interaction-frequency', ensureAuthenticated, ensureAdmin, (req, res) => {
-  console.log(`Carregando relatório de frequência de interação para ${req.user.username}`);
-  req.db.all(`
-    SELECT name, interactions
-    FROM contacts
-    ORDER BY interactions DESC
-    LIMIT 10
-  `, (err, data) => {
-    if (err) {
-      console.error('Erro ao carregar relatório de frequência de interação:', err.message);
-      return res.status(500).json({ error: 'Erro ao carregar relatório', details: err.message });
-    }
-    console.log('Relatório de frequência de interação carregado:', data);
-    res.json(data);
-  });
-});
-
-router.get('/reports/growth', ensureAuthenticated, ensureAdmin, (req, res) => {
-  console.log(`Carregando relatório de crescimento para ${req.user.username}`);
-  req.db.all(`
-    SELECT strftime('%Y-%m', createdAt) as month, COUNT(*) as count
-    FROM contacts
-    GROUP BY strftime('%Y-%m', createdAt)
-    ORDER BY month DESC
-    LIMIT 12
-  `, (err, data) => {
-    if (err) {
-      console.error('Erro ao carregar relatório de crescimento:', err.message);
-      return res.status(500).json({ error: 'Erro ao carregar relatório', details: err.message });
-    }
-    console.log('Relatório de crescimento carregado:', data);
-    res.json(data);
-  });
-});
-
-router.get('/reports/contact-failures', ensureAuthenticated, ensureAdmin, (req, res) => {
-  console.log(`Carregando relatório de falhas de contato para ${req.user.username}`);
-  const phoneRegex = /^(\+258)?\d{9}$/;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  req.db.all('SELECT name, phone, email FROM contacts', (err, contacts) => {
-    if (err) {
-      console.error('Erro ao carregar contatos para relatório de falhas:', err.message);
-      return res.status(500).json({ error: 'Erro ao carregar relatório', details: err.message });
-    }
-    const failures = contacts.filter(contact => {
-      const phoneValid = phoneRegex.test(contact.phone);
-      const emailValid = !contact.email || emailRegex.test(contact.email);
-      return !phoneValid || !emailValid;
-    }).map(contact => ({
-      name: contact.name,
-      phone: contact.phone,
-      email: contact.email,
-      issues: [
-        !phoneRegex.test(contact.phone) ? 'Telefone inválido' : null,
-        contact.email && !emailRegex.test(contact.email) ? 'E-mail inválido' : null
-      ].filter(Boolean)
-    }));
-    console.log('Relatório de falhas de contato carregado:', failures);
-    res.json(failures);
-  });
-});
-
+/* Exporta o roteador para uso em app.js */
 module.exports = router;

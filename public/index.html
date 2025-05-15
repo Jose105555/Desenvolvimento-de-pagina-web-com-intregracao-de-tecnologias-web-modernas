@@ -1,844 +1,891 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<!-- Declara o tipo de documento como HTML5 -->
+<html lang="pt">
+<!-- Define o idioma do documento como português -->
 <head>
+  <!-- Define a codificação de caracteres como UTF-8 para suportar caracteres especiais -->
   <meta charset="UTF-8">
+  <!-- Configura a viewport para responsividade em dispositivos móveis -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Define o título da página exibido na aba do navegador -->
   <title>Agenda de Contatos</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/estilo.css">
-  <style>
-    .login-container { max-width: 400px; margin: 0 auto; }
-    .dashboard-container { display: none; }
-    .alert { position: fixed; top: 20px; right: 20px; z-index: 1000; }
-    .report-table { margin-top: 20px; }
-    .chat-container { height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #f9f9f9; }
-    .chat-message { margin: 10px; padding: 10px; border-radius: 10px; max-width: 70%; }
-    .chat-message.user { background: #007bff; color: white; margin-left: auto; }
-    .chat-message.bot { background: #e9ecef; color: black; margin-right: auto; }
-    .chat-message.admin { background: #28a745; color: white; margin-right: auto; }
-  </style>
+  <!-- Inclui o CSS do Bootstrap 5.3.3 via CDN para estilização e layout -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Inclui o arquivo estilo.css local para estilização personalizada (ex.: gradientes, sombras) -->
+  <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">Agenda de Contatos</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav">
-          <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="/index.html">Home</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#" onclick="logout()">Sair</a>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </nav>
-
-  <div class="container mt-4">
-    <div id="loginSection" class="login-container">
-      <h2>Login</h2>
-      <div id="loginError" class="alert alert-danger d-none"></div>
-      <div id="loginSuccess" class="alert alert-success d-none"></div>
-      <form id="loginForm" class="mb-3">
-        <div class="mb-3">
-          <label for="loginUsername" class="form-label">Username</label>
-          <input type="text" class="form-control" id="loginUsername" required>
-        </div>
-        <div class="mb-3">
-          <label for="loginPassword" class="form-label">Senha</label>
-          <input type="password" class="form-control" id="loginPassword" required>
-        </div>
-        <button type="submit" class="btn btn-primary w-100">Entrar</button>
-      </form>
-      <p class="text-center mt-3">Não tem conta? <a href="#" onclick="showRegister()">Registre-se</a></p>
-    </div>
-
-    <div id="registerSection" class="login-container d-none">
-      <h2>Registrar</h2>
-      <div id="registerError" class="alert alert-danger d-none"></div>
-      <div id="registerSuccess" class="alert alert-success d-none"></div>
-      <form id="registerForm" class="mb-3">
-        <div class="mb-3">
-          <label for="registerUsername" class="form-label">Username</label>
-          <input type="text" class="form-control" id="registerUsername" required>
-        </div>
-        <div class="mb-3">
-          <label for="registerPassword" class="form-label">Senha</label>
-          <input type="password" class="form-control" id="registerPassword" required>
-        </div>
-        <div class="mb-3">
-          <label for="registerEmail" class="form-label">E-mail</label>
-          <input type="email" class="form-control" id="registerEmail">
-        </div>
-        <div class="mb-3">
-          <label for="registerRole" class="form-label">Tipo de Conta</label>
-          <select class="form-select" id="registerRole">
-            <option value="user">Usuário</option>
-            <option value="admin">Administrador</option>
-          </select>
-        </div>
-        <button type="submit" class="btn btn-primary w-100">Registrar</button>
-        <button type="button" class="btn btn-secondary w-100 mt-2" onclick="showLogin()">Voltar ao Login</button>
-      </form>
-    </div>
-
-    <div id="dashboardSection" class="dashboard-container">
-      <h2>Dashboard</h2>
-      <ul class="nav nav-tabs">
-        <li class="nav-item">
-          <a class="nav-link active" href="#" onclick="showTab('contactsTab')">Contatos</a>
-        </li>
-        <li class="nav-item" id="usersTabNav" style="display: none;">
-          <a class="nav-link" href="#" onclick="showTab('usersTab')">Gerenciar Usuários</a>
-        </li>
-        <li class="nav-item" id="reportsTabNav" style="display: none;">
-          <a class="nav-link" href="#" onclick="showTab('reportsTab')">Relatórios</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="#" onclick="showTab('chatTab')">Chat</a>
-        </li>
-      </ul>
-
-      <div id="contactsTab" class="mt-3">
-        <h3>Gerenciar Contatos</h3>
-        <form id="contactForm" class="mb-3">
-          <div class="row">
-            <div class="col-md-3 mb-3">
-              <input type="text" class="form-control" id="contactName" placeholder="Nome" required>
-            </div>
-            <div class="col-md-3 mb-3">
-              <input type="text" class="form-control" id="contactPhone" placeholder="Telefone" required>
-            </div>
-            <div class="col-md-3 mb-3">
-              <input type="email" class="form-control" id="contactEmail" placeholder="E-mail">
-            </div>
-            <div class="col-md-3 mb-3">
-              <input type="text" class="form-control" id="contactCategory" placeholder="Categoria">
-            </div>
-            <div class="col-md-3 mb-3">
-              <input type="date" class="form-control" id="contactBirthday" placeholder="Aniversário">
+  <!-- Container principal com margem superior de 5 unidades (Bootstrap) -->
+  <div class="container mt-5">
+    <!-- Título principal da agenda, centralizado com margem inferior de 4 unidades -->
+    <h1 class="text-center mb-4">Agenda de Contatos</h1>
+    <!-- Seção de autenticação (login, registro, recuperação de senha), exibida por padrão -->
+    <div id="authSection">
+      <!-- Linha Bootstrap para centralizar o conteúdo -->
+      <div class="row justify-content-center">
+        <!-- Coluna com largura média de 6 unidades para centralizar o formulário -->
+        <div class="col-md-6">
+          <!-- Card Bootstrap para o formulário de login -->
+          <div class="card">
+            <!-- Corpo do card com padding interno -->
+            <div class="card-body">
+              <!-- Título do card, centralizado -->
+              <h3 class="card-title text-center">Login</h3>
+              <!-- Div para exibir erros de login, oculta por padrão -->
+              <div id="loginError" class="alert alert-danger d-none"></div>
+              <!-- Formulário de login -->
+              <form id="loginForm">
+                <!-- Campo de nome com rótulo e validação -->
+                <div class="mb-3">
+                  <label for="name" class="form-label">Nome</label>
+                  <input type="text" class="form-control" id="name" placeholder="Digite seu nome completo" title="Insira o nome usado no registro" required>
+                </div>
+                <!-- Campo de senha com rótulo e validação -->
+                <div class="mb-3">
+                  <label for="password" class="form-label">Senha</label>
+                  <input type="password" class="form-control" id="password" placeholder="Digite sua senha" title="Senha com pelo menos 6 caracteres" required>
+                </div>
+                <!-- Campo de seleção de função (usuário ou administrador) -->
+                <div class="mb-3">
+                  <label for="loginRole" class="form-label">Acessar como</label>
+                  <select class="form-select" id="loginRole" title="Selecione sua função" required>
+                    <option value="" disabled selected>Escolha uma função</option>
+                    <option value="user">Usuário</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+                <!-- Botão de envio do formulário, ocupando toda a largura -->
+                <button type="submit" class="btn btn-primary w-100">Entrar</button>
+              </form>
+              <!-- Links para recuperação de senha e registro -->
+              <p class="mt-3 text-center">
+                <a href="#" id="forgotPasswordLink">Esqueceu a senha?</a> | 
+                <a href="#" id="registerLink">Registrar-se</a>
+              </p>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary">Adicionar Contato</button>
-        </form>
-        <h4>Lista de Contatos</h4>
-        <table class="table table-striped">
+          <!-- Card para o formulário de registro, oculta por padrão -->
+          <div class="card mt-3 d-none" id="registerFormDiv">
+            <!-- Corpo do card com padding interno -->
+            <div class="card-body">
+              <!-- Título do card, centralizado -->
+              <h3 class="card-title text-center">Registro</h3>
+              <!-- Div para exibir erros de registro, oculta por padrão -->
+              <div id="registerError" class="alert alert-danger d-none"></div>
+              <!-- Formulário de registro -->
+              <form id="registerForm">
+                <!-- Campo de nome com rótulo e validação -->
+                <div class="mb-3">
+                  <label for="regName" class="form-label">Nome</label>
+                  <input type="text" class="form-control" id="regName" placeholder="Digite seu nome completo" title="Insira seu nome completo" required>
+                </div>
+                <!-- Campo de email com rótulo e validação -->
+                <div class="mb-3">
+                  <label for="regEmail" class="form-label">Email</label>
+                  <input type="email" class="form-control" id="regEmail" placeholder="Digite seu email" title="Insira um email válido" required>
+                </div>
+                <!-- Campo de senha com rótulo, validação e comprimento mínimo -->
+                <div class="mb-3">
+                  <label for="regPassword" class="form-label">Senha</label>
+                  <input type="password" class="form-control" id="regPassword" placeholder="Crie uma senha (mín. 6 caracteres)" title="Senha com pelo menos 6 caracteres" minlength="6" required>
+                </div>
+                <!-- Campo de data de nascimento com rótulo e validação -->
+                <div class="mb-3">
+                  <label for="regDate" class="form-label">Data de Nascimento</label>
+                  <input type="date" class="form-control" id="regDate" title="Selecione sua data de nascimento" required>
+                </div>
+                <!-- Campo de data especial com rótulo e validação -->
+                <div class="mb-3">
+                  <label for="regSpecialDate" class="form-label">Data Especial</label>
+                  <input type="date" class="form-control" id="regSpecialDate" title="Selecione uma data especial" required>
+                </div>
+                <!-- Campo de seleção de função (usuário ou administrador) -->
+                <div class="mb-3">
+                  <label for="regRole" class="form-label">Registrar como</label>
+                  <select class="form-select" id="regRole" title="Selecione sua função" required>
+                    <option value="" disabled selected>Escolha uma função</option>
+                    <option value="user">Usuário</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+                <!-- Botão de envio do formulário, ocupando toda a largura -->
+                <button type="submit" class="btn btn-primary w-100">Registrar</button>
+              </form>
+              <!-- Link para voltar ao login -->
+              <p class="mt-3 text-center"><a href="#" id="backToLoginLink">Voltar ao Login</a></p>
+            </div>
+          </div>
+          <!-- Card para o formulário de recuperação de senha, oculta por padrão -->
+          <div class="card mt-3 d-none" id="forgotPasswordFormDiv">
+            <!-- Corpo do card com padding interno -->
+            <div class="card-body">
+              <!-- Título do card, centralizado -->
+              <h3 class="card-title text-center">Recuperar Senha</h3>
+              <!-- Div para exibir erros de recuperação, oculta por padrão -->
+              <div id="forgotError" class="alert alert-danger d-none"></div>
+              <!-- Formulário de recuperação de senha -->
+              <form id="forgotPasswordForm">
+                <!-- Campo de email com rótulo e validação -->
+                <div class="mb-3">
+                  <label for="forgotEmail" class="form-label">Email</label>
+                  <input type="email" class="form-control" id="forgotEmail" placeholder="Digite seu email" title="Insira o email registrado" required>
+                </div>
+                <!-- Botão de envio do formulário, ocupando toda a largura -->
+                <button type="submit" class="btn btn-primary w-100">Enviar Link de Recuperação</button>
+              </form>
+              <!-- Link para voltar ao login -->
+              <p class="mt-3 text-center"><a href="#" id="backToLoginLink2">Voltar ao Login</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Seção da agenda, oculta por padrão até o login -->
+    <div id="agendaSection" class="d-none">
+      <!-- Cabeçalho com mensagem de boas-vindas e botões -->
+      <div class="d-flex justify-content-between mb-3">
+        <!-- Mensagem de boas-vindas personalizada com o nome do usuário -->
+        <h3 id="welcomeMessage">Bem-vindo!</h3>
+        <!-- Botões de navegação (chat e logout) -->
+        <div>
+          <!-- Link para a página de chat (chat.html) -->
+          <a href="chat.html" class="btn btn-info">Chat</a>
+          <!-- Botão para sair, limpando o localStorage -->
+          <button id="logoutBtn" class="btn btn-danger">Sair</button>
+        </div>
+      </div>
+      <!-- Seção de administração, visível apenas para administradores -->
+      <div id="adminSection" class="d-none">
+        <!-- Título da seção de gerenciamento de usuários -->
+        <h4>Gerenciar Usuários</h4>
+        <!-- Botão para abrir o modal de adicionar usuário -->
+        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">Adicionar Usuário</button>
+        <!-- Tabela para listar usuários -->
+        <table class="table table-bordered">
+          <!-- Cabeçalho da tabela -->
           <thead>
             <tr>
               <th>Nome</th>
-              <th>Telefone</th>
-              <th>E-mail</th>
-              <th>Categoria</th>
-              <th>Aniversário</th>
+              <th>Email</th>
+              <th>Função</th>
               <th>Ações</th>
             </tr>
           </thead>
-          <tbody id="contactList"></tbody>
+          <!-- Corpo da tabela, preenchido dinamicamente -->
+          <tbody id="usersTable"></tbody>
         </table>
       </div>
-
-      <div id="usersTab" class="mt-3 d-none">
-        <h3>Gerenciar Usuários</h3>
-        <form id="userForm" class="mb-3">
-          <div class="row">
-            <div class="col-md-3 mb-3">
-              <input type="text" class="form-control" id="userUsername" placeholder="Username" required>
-            </div>
-            <div class="col-md-3 mb-3">
-              <input type="password" class="form-control" id="userPassword" placeholder="Senha" required>
-            </div>
-            <div class="col-md-3 mb-3">
-              <input type="email" class="form-control" id="userEmail" placeholder="E-mail">
-            </div>
-            <div class="col-md-3 mb-3">
-              <select class="form-select" id="userRole">
-                <option value="user">Usuário</option>
-                <option value="admin">Administrador</option>
-              </select>
-            </div>
-          </div>
-          <button type="submit" class="btn btn-primary">Adicionar Usuário</button>
-        </form>
-        <h4>Lista de Usuários</h4>
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>E-mail</th>
-              <th>Papel</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="userList"></tbody>
-        </table>
-      </div>
-
-      <div id="reportsTab" class="mt-3 d-none">
-        <h3>Relatórios</h3>
-        <div id="reportError" class="alert alert-danger d-none"></div>
-        <ul class="list-group mb-3">
-          <li class="list-group-item"><a href="#" onclick="loadReport('category')">Contatos por Categoria</a></li>
-          <li class="list-group-item"><a href="#" onclick="loadReport('active-inactive')">Contatos Ativos vs. Inativos</a></li>
-          <li class="list-group-item"><a href="#" onclick="loadReport('recent-updates')">Atualizações Recentes</a></li>
-          <li class="list-group-item"><a href="#" onclick="loadReport('birthdays')">Aniversários</a></li>
-          <li class="list-group-item"><a href="#" onclick="loadReport('interaction-frequency')">Frequência de Interação</a></li>
-          <li class="list-group-item"><a href="#" onclick="loadReport('growth')">Crescimento da Base</a></li>
-          <li class="list-group-item"><a href="#" onclick="loadReport('contact-failures')">Falhas de Contato</a></li>
-        </ul>
-        <div id="reportContent"></div>
-      </div>
-
-      <div id="chatTab" class="mt-3 d-none">
-        <h3>Chat de Suporte</h3>
-        <div id="chatMessages" class="chat-container"></div>
-        <form id="chatForm" class="mt-3">
-          <div class="input-group">
-            <input type="text" class="form-control" id="chatInput" placeholder="Digite sua pergunta..." required>
-            <button type="submit" class="btn btn-primary">Enviar</button>
-          </div>
-        </form>
+      <!-- Título da seção de contatos -->
+      <h4>Seus Contatos</h4>
+      <!-- Botão para abrir o modal de adicionar contato -->
+      <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#contactModal">Adicionar Contato</button>
+      <!-- Tabela para listar contatos -->
+      <table class="table table-bordered">
+        <!-- Cabeçalho da tabela -->
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Telefone</th>
+            <th>Email</th>
+            <th>Categoria</th>
+            <th>Data Especial</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <!-- Corpo da tabela, preenchido dinamicamente -->
+        <tbody id="contactsTable"></tbody>
+      </table>
+      <!-- Seção de relatórios, visível apenas para administradores -->
+      <div id="reportsSection" class="d-none mt-4">
+        <!-- Título da seção de relatórios -->
+        <h4>Relatórios</h4>
+        <!-- Conteúdo dos relatórios, preenchido dinamicamente -->
+        <div id="reportsContent"></div>
       </div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Modal para adicionar ou editar contatos -->
+  <div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+    <!-- Diálogo do modal -->
+    <div class="modal-dialog">
+      <!-- Conteúdo do modal -->
+      <div class="modal-content">
+        <!-- Cabeçalho do modal -->
+        <div class="modal-header">
+          <!-- Título do modal, alterado dinamicamente (Adicionar/Editar) -->
+          <h5 class="modal-title" id="contactModalLabel">Adicionar Contato</h5>
+          <!-- Botão para fechar o modal -->
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <!-- Corpo do modal -->
+        <div class="modal-body">
+          <!-- Formulário para adicionar/editar contato -->
+          <form id="contactForm">
+            <!-- Campo de nome do contato -->
+            <div class="mb-3">
+              <label for="contactName" class="form-label">Nome</label>
+              <input type="text" class="form-control" id="contactName" title="Insira o nome do contato" required>
+            </div>
+            <!-- Campo de telefone com validação específica -->
+            <div class="mb-3">
+              <label for="contactPhone" class="form-label">Telefone</label>
+              <input type="text" class="form-control" id="contactPhone" placeholder="+258xxxxxxxxx" title="Telefone com +258 e 9 dígitos" required>
+            </div>
+            <!-- Campo de email (opcional) -->
+            <div class="mb-3">
+              <label for="contactEmail" class="form-label">Email</label>
+              <input type="email" class="form-control" id="contactEmail" title="Email opcional do contato">
+            </div>
+            <!-- Campo de categoria do contato -->
+            <div class="mb-3">
+              <label for="contactCategory" class="form-label">Categoria</label>
+              <select class="form-select" id="contactCategory" title="Selecione a categoria do contato" required>
+                <option value="Família">Família</option>
+                <option value="Trabalho">Trabalho</option>
+                <option value="Amigos">Amigos</option>
+                <option value="Clientes">Clientes</option>
+              </select>
+            </div>
+            <!-- Campo de data especial (opcional) -->
+            <div class="mb-3">
+              <label for="contactSpecialDate" class="form-label">Data Especial</label>
+              <input type="date" class="form-control" id="contactSpecialDate" title="Data especial opcional">
+            </div>
+            <!-- Campo oculto para armazenar o ID do contato (usado na edição) -->
+            <input type="hidden" id="contactId">
+            <!-- Botão de envio do formulário -->
+            <button type="submit" class="btn btn-primary w-100">Salvar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para adicionar usuário (apenas administradores) -->
+  <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+    <!-- Diálogo do modal -->
+    <div class="modal-dialog">
+      <!-- Conteúdo do modal -->
+      <div class="modal-content">
+        <!-- Cabeçalho do modal -->
+        <div class="modal-header">
+          <!-- Título do modal -->
+          <h5 class="modal-title" id="addUserModalLabel">Adicionar Usuário</h5>
+          <!-- Botão para fechar o modal -->
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <!-- Corpo do modal -->
+        <div class="modal-body">
+          <!-- Formulário para adicionar usuário -->
+          <form id="addUserForm">
+            <!-- Campo de nome do usuário -->
+            <div class="mb-3">
+              <label for="addName" class="form-label">Nome</label>
+              <input type="text" class="form-control" id="addName" placeholder="Digite o nome completo" title="Insira o nome completo" required>
+            </div>
+            <!-- Campo de email do usuário -->
+            <div class="mb-3">
+              <label for="addEmail" class="form-label">Email</label>
+              <input type="email" class="form-control" id="addEmail" placeholder="Digite o email" title="Insira um email válido" required>
+            </div>
+            <!-- Campo de senha do usuário -->
+            <div class="mb-3">
+              <label for="addPassword" class="form-label">Senha</label>
+              <input type="password" class="form-control" id="addPassword" placeholder="Crie uma senha (mín. 6 caracteres)" title="Senha com pelo menos 6 caracteres" minlength="6" required>
+            </div>
+            <!-- Campo de data de nascimento do usuário -->
+            <div class="mb-3">
+              <label for="addDate" class="form-label">Data de Nascimento</label>
+              <input type="date" class="form-control" id="addDate" title="Selecione a data de nascimento" required>
+            </div>
+            <!-- Campo de data especial do usuário -->
+            <div class="mb-3">
+              <label for="addSpecialDate" class="form-label">Data Especial</label>
+              <input type="date" class="form-control" id="addSpecialDate" title="Selecione uma data especial" required>
+            </div>
+            <!-- Campo de seleção de função do usuário -->
+            <div class="mb-3">
+              <label for="addRole" class="form-label">Função</label>
+              <select class="form-select" id="addRole" title="Selecione a função" required>
+                <option value="" disabled selected>Escolha uma função</option>
+                <option value="user">Usuário</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+            <!-- Botão de envio do formulário -->
+            <button type="submit" class="btn btn-primary w-100">Adicionar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inclui o JavaScript do Bootstrap 5.3.3 para modais e outros componentes -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Script JavaScript para gerenciar a lógica da página -->
   <script>
-    console.log('Inicializando página...');
+    // Função para exibir mensagens de erro em uma div específica
+    const showError = (elementId, message) => {
+      const errorDiv = document.getElementById(elementId);
+      errorDiv.textContent = message;
+      errorDiv.classList.remove('d-none');
+      setTimeout(() => errorDiv.classList.add('d-none'), 5000);
+    };
 
-    let ws = null;
-    function connectWebSocket() {
-      ws = new WebSocket('ws://localhost:3000');
-      ws.onopen = () => console.log('WebSocket conectado');
-      ws.onmessage = (event) => {
-        console.log('Mensagem recebida do WebSocket:', event.data);
-        let chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
-        const adminMessage = { sender: 'admin', text: event.data };
-        chatHistory.push(adminMessage);
-        const chatMessages = document.getElementById('chatMessages');
-        const adminDiv = document.createElement('div');
-        adminDiv.className = 'chat-message admin';
-        adminDiv.textContent = event.data;
-        chatMessages.appendChild(adminDiv);
-        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      };
-      ws.onclose = () => console.log('WebSocket desconectado');
-      ws.onerror = (error) => console.error('Erro no WebSocket:', error);
-    }
-
-    function showRegister() {
-      console.log('Exibindo seção de registro');
-      document.getElementById('loginSection').classList.add('d-none');
-      document.getElementById('registerSection').classList.remove('d-none');
-      document.getElementById('dashboardSection').classList.add('d-none');
-      clearMessages();
-    }
-
-    function showLogin() {
-      console.log('Exibindo seção de login');
-      document.getElementById('loginSection').classList.remove('d-none');
-      document.getElementById('registerSection').classList.add('d-none');
-      document.getElementById('dashboardSection').classList.add('d-none');
-      clearMessages();
-    }
-
-    function showDashboard() {
-      console.log('Exibindo dashboard');
-      document.getElementById('loginSection').classList.add('d-none');
-      document.getElementById('registerSection').classList.add('d-none');
-      const dashboardSection = document.getElementById('dashboardSection');
-      dashboardSection.style.display = 'block';
-      dashboardSection.classList.remove('d-none');
-      const isAdmin = localStorage.getItem('role') === 'admin';
-      console.log('Usuário é admin?', isAdmin);
-      document.getElementById('usersTabNav').style.display = isAdmin ? 'block' : 'none';
-      document.getElementById('reportsTabNav').style.display = isAdmin ? 'block' : 'none';
-      clearMessages();
-      showTab('contactsTab');
-      loadContacts();
-      connectWebSocket();
-    }
-
-    function showTab(tabId) {
-      console.log('Exibindo aba:', tabId);
-      document.querySelectorAll('#dashboardSection > div').forEach(div => div.classList.add('d-none'));
-      document.getElementById(tabId).classList.remove('d-none');
-      document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-      document.querySelector(`a[href="#"][onclick="showTab('${tabId}')"]`).classList.add('active');
-      if (tabId === 'contactsTab') loadContacts();
-      if (tabId === 'usersTab') loadUsers();
-      if (tabId === 'chatTab') loadChat();
-    }
-
-    function clearMessages() {
-      console.log('Limpando mensagens');
-      ['loginError', 'loginSuccess', 'registerError', 'registerSuccess', 'reportError'].forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-          element.classList.add('d-none');
-          element.textContent = '';
+    // Função para alternar entre seções de autenticação e agenda
+    function toggleSections() {
+      // Recupera o token e os dados do usuário do localStorage
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user'));
+      // Seleciona as seções de autenticação e agenda
+      const authSection = document.getElementById('authSection');
+      const agendaSection = document.getElementById('agendaSection');
+      // Verifica se o usuário está autenticado
+      if (token && user) {
+        // Oculta a seção de autenticação e exibe a seção de agenda
+        authSection.classList.add('d-none');
+        agendaSection.classList.remove('d-none');
+        // Personaliza a mensagem de boas-vindas com o nome do usuário
+        document.getElementById('welcomeMessage').textContent = `Bem-vindo, ${user.name}!`;
+        // Para administradores, exibe seções de gerenciamento de usuários e relatórios
+        if (user.role === 'admin') {
+          document.getElementById('adminSection').classList.remove('d-none');
+          document.getElementById('reportsSection').classList.remove('d-none');
+          loadUsers();
+          loadReports();
         }
-      });
-    }
-
-    function showMessage(section, type, message) {
-      console.log(`Exibindo mensagem: ${section}${type} - ${message}`);
-      const element = document.getElementById(`${section}${type}`);
-      if (element) {
-        element.textContent = message;
-        element.classList.remove('d-none');
-        setTimeout(() => element.classList.add('d-none'), 5000);
+        // Carrega os contatos do usuário
+        loadContacts();
+      } else {
+        // Exibe a seção de autenticação e oculta a seção de agenda
+        authSection.classList.remove('d-none');
+        agendaSection.classList.add('d-none');
       }
     }
 
-    async function logout() {
-      console.log('Iniciando logout');
-      try {
-        const response = await fetch('/api/logout', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        localStorage.removeItem('username');
-        localStorage.removeItem('role');
-        localStorage.removeItem('chatCount');
-        localStorage.removeItem('chatHistory');
-        localStorage.removeItem('welcomeSent');
-        if (ws) ws.close();
-        showLogin();
-        showMessage('login', 'Success', data.message || 'Logout bem-sucedido');
-      } catch (error) {
-        console.error('Erro ao fazer logout:', error);
-        localStorage.removeItem('username');
-        localStorage.removeItem('role');
-        localStorage.removeItem('chatCount');
-        localStorage.removeItem('chatHistory');
-        localStorage.removeItem('welcomeSent');
-        if (ws) ws.close();
-        showLogin();
-        showMessage('login', 'Success', 'Logout bem-sucedido');
-      }
-    }
+    // Executa a alternância de seções ao carregar a página
+    toggleSections();
 
+    // Evento para exibir o formulário de registro
+    document.getElementById('registerLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      // Oculta o formulário de login
+      document.getElementById('loginForm').parentElement.parentElement.classList.add('d-none');
+      // Exibe o formulário de registro
+      document.getElementById('registerFormDiv').classList.remove('d-none');
+    });
+
+    // Evento para exibir o formulário de recuperação de senha
+    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      // Oculta o formulário de login
+      document.getElementById('loginForm').parentElement.parentElement.classList.add('d-none');
+      // Exibe o formulário de recuperação de senha
+      document.getElementById('forgotPasswordFormDiv').classList.remove('d-none');
+    });
+
+    // Evento para voltar ao formulário de login a partir do registro
+    document.getElementById('backToLoginLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      // Oculta o formulário de registro
+      document.getElementById('registerFormDiv').classList.add('d-none');
+      // Exibe o formulário de login
+      document.getElementById('loginForm').parentElement.parentElement.classList.remove('d-none');
+    });
+
+    // Evento para voltar ao formulário de login a partir da recuperação de senha
+    document.getElementById('backToLoginLink2').addEventListener('click', (e) => {
+      e.preventDefault();
+      // Oculta o formulário de recuperação de senha
+      document.getElementById('forgotPasswordFormDiv').classList.add('d-none');
+      // Exibe o formulário de login
+      document.getElementById('loginForm').parentElement.parentElement.classList.remove('d-none');
+    });
+
+    // Evento de submissão do formulário de login
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const username = document.getElementById('loginUsername').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      console.log('Tentando login com:', { username });
+      // Obtém os valores dos campos
+      const name = document.getElementById('name').value.trim();
+      const password = document.getElementById('password').value;
+      const role = document.getElementById('loginRole').value;
+      // Validações básicas no lado do cliente
+      if (!name) return showError('loginError', 'Por favor, preencha o campo Nome.');
+      if (!password) return showError('loginError', 'Por favor, preencha o campo Senha.');
+      if (!role) return showError('loginError', 'Por favor, selecione uma função.');
       try {
+        // Log para depuração
+        console.log('Enviando login:', { name, password, role });
+        // Envia solicitação de login para a API
         const response = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ name, password, role })
         });
-        console.log('Resposta do login recebida:', response.status);
-        const data = await response.json();
-        console.log('Dados do login:', data);
-        if (!response.ok) {
-          console.warn('Login falhou:', data.error);
-          showMessage('login', 'Error', data.error || 'Erro ao fazer login');
-          return;
+        const result = await response.json();
+        // Log para depuração
+        console.log('Resposta do login:', result);
+        // Verifica se o login foi bem-sucedido
+        if (result.success) {
+          // Armazena o token e os dados do usuário no localStorage
+          localStorage.setItem('token', result.token);
+          localStorage.setItem('user', JSON.stringify(result.user));
+          // Recarrega a página para exibir a seção de agenda
+          location.reload();
+        } else {
+          // Exibe mensagem de erro
+          showError('loginError', result.message);
         }
-        localStorage.setItem('username', data.username);
-        localStorage.setItem('role', data.role);
-        localStorage.setItem('chatCount', '0');
-        localStorage.setItem('chatHistory', JSON.stringify([]));
-        localStorage.setItem('welcomeSent', 'false');
-        console.log('localStorage atualizado:', { username: data.username, role: data.role });
-        showDashboard();
-        showMessage('login', 'Success', data.message || 'Login bem-sucedido');
-        document.getElementById('loginForm').reset();
-      } catch (error) {
-        console.error('Erro na requisição de login:', error);
-        showMessage('login', 'Error', 'Erro de conexão com o servidor');
+      } catch (e) {
+        // Log e mensagem de erro para falhas de conexão
+        console.error('Erro no login:', e.message);
+        showError('loginError', 'Erro ao conectar ao servidor. Verifique se o servidor está rodando.');
       }
     });
 
+    // Evento de submissão do formulário de registro
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const username = document.getElementById('registerUsername').value.trim();
-      const password = document.getElementById('registerPassword').value;
-      const email = document.getElementById('registerEmail').value;
-      const role = document.getElementById('registerRole').value;
-      console.log('Tentando registrar:', { username, email, role });
+      // Obtém os valores dos campos
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const date = document.getElementById('regDate').value;
+      const specialDate = document.getElementById('regSpecialDate').value;
+      const role = document.getElementById('regRole').value;
+
+      // Validações básicas no lado do cliente
+      if (!name) return showError('registerError', 'Por favor, preencha o campo Nome.');
+      if (!email) return showError('registerError', 'Por favor, preencha o campo Email.');
+      if (!email.includes('@')) return showError('registerError', 'Email inválido.');
+      if (!password) return showError('registerError', 'Por favor, preencha o campo Senha.');
+      if (password.length < 6) return showError('registerError', 'A senha deve ter pelo menos 6 caracteres.');
+      if (!date) return showError('registerError', 'Por favor, selecione a Data de Nascimento.');
+      if (!specialDate) return showError('registerError', 'Por favor, selecione a Data Especial.');
+      if (!role) return showError('registerError', 'Por favor, selecione uma função.');
+
       try {
+        // Log para depuração
+        console.log('Enviando registro:', { name, email, password, date, specialDate, role });
+        // Envia solicitação de registro para a API
         const response = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, email, role })
+          body: JSON.stringify({ name, email, password, date, specialDate, role })
         });
-        const data = await response.json();
-        console.log('Resposta do registro:', data);
-        if (!response.ok) {
-          console.warn('Registro falhou:', data.error);
-          showMessage('register', 'Error', data.error || 'Erro ao registrar');
-          return;
+        const result = await response.json();
+        // Log para depuração
+        console.log('Resposta do registro:', result);
+        // Verifica se o registro foi bem-sucedido
+        if (result.success) {
+          // Exibe mensagem de sucesso e volta ao login
+          alert('Registro bem-sucedido! Faça login.');
+          document.getElementById('backToLoginLink').click();
+        } else {
+          // Exibe mensagem de erro
+          showError('registerError', result.message);
         }
-        showLogin();
-        showMessage('login', 'Success', data.message || 'Registro bem-sucedido! Faça login.');
-        document.getElementById('registerForm').reset();
-      } catch (error) {
-        console.error('Erro na requisição de registro:', error);
-        showMessage('register', 'Error', 'Erro de conexão com o servidor');
+      } catch (e) {
+        // Log e mensagem de erro para falhas de conexão
+        console.error('Erro no registro:', e.message);
+        showError('registerError', 'Erro ao conectar ao servidor. Verifique se o servidor está rodando.');
       }
     });
 
-    async function loadContacts() {
-      const username = localStorage.getItem('username');
-      console.log('Carregando contatos para:', username);
-      if (!username) {
-        console.warn('Nenhum usuário logado');
-        showMessage('login', 'Error', 'Você precisa estar logado para visualizar contatos');
-        showLogin();
-        return;
-      }
-      try {
-        const response = await fetch('/api/contacts', {
-          headers: { 'x-username': username }
-        });
-        console.log('Resposta de contatos:', response.status);
-        const contacts = await response.json();
-        console.log('Contatos carregados:', contacts);
-        const contactList = document.getElementById('contactList');
-        contactList.innerHTML = '';
-        contacts.forEach(contact => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${contact.name}</td>
-            <td>${contact.phone}</td>
-            <td>${contact.email}</td>
-            <td>${contact.category}</td>
-            <td>${contact.birthday}</td>
-            <td>
-              <button class="btn btn-primary btn-sm me-1" onclick="interactContact('${contact.id}')">Interagir</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteContact('${contact.id}')">Excluir</button>
-            </td>
-          `;
-          contactList.appendChild(row);
-        });
-      } catch (error) {
-        console.error('Erro ao carregar contatos:', error);
-        showMessage('login', 'Error', 'Erro ao carregar contatos');
-      }
-    }
-
-    async function interactContact(id) {
-      const username = localStorage.getItem('username');
-      console.log('Registrando interação para contato:', id);
-      try {
-        const response = await fetch(`/api/contacts/${id}/interact`, {
-          method: 'POST',
-          headers: { 'x-username': username }
-        });
-        const data = await response.json();
-        console.log('Resposta da interação:', data);
-        if (response.ok) {
-          showMessage('login', 'Success', data.message || 'Interação registrada');
-          loadContacts();
-        } else {
-          console.warn('Falha na interação:', data.error);
-          showMessage('login', 'Error', data.error || 'Erro ao registrar interação');
-        }
-      } catch (error) {
-        console.error('Erro ao registrar interação:', error);
-        showMessage('login', 'Error', 'Erro de conexão com o servidor');
-      }
-    }
-
-    async function deleteContact(id) {
-      const username = localStorage.getItem('username');
-      console.log('Excluindo contato:', id);
-      try {
-        const response = await fetch(`/api/contacts/${id}`, {
-          method: 'DELETE',
-          headers: { 'x-username': username }
-        });
-        console.log('Resposta da exclusão:', response.status);
-        if (response.ok) {
-          loadContacts();
-        } else {
-          const data = await response.json();
-          console.warn('Falha na exclusão:', data.error);
-          showMessage('login', 'Error', data.error || 'Erro ao excluir contato');
-        }
-      } catch (error) {
-        console.error('Erro ao excluir contato:', error);
-        showMessage('login', 'Error', 'Erro de conexão com o servidor');
-      }
-    }
-
-    document.getElementById('contactForm').addEventListener('submit', async (e) => {
+    // Evento de submissão do formulário de recuperação de senha
+    document.getElementById('forgotPasswordForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const username = localStorage.getItem('username');
-      console.log('Adicionando contato para:', username);
-      if (!username) {
-        console.warn('Nenhum usuário logado');
-        showMessage('login', 'Error', 'Você precisa estar logado para adicionar contatos');
-        showLogin();
-        return;
-      }
-      const contact = {
-        name: document.getElementById('contactName').value,
-        phone: document.getElementById('contactPhone').value,
-        email: document.getElementById('contactEmail').value,
-        category: document.getElementById('contactCategory').value,
-        birthday: document.getElementById('contactBirthday').value
-      };
+      // Obtém o valor do campo email
+      const email = document.getElementById('forgotEmail').value.trim();
+      // Validação básica no lado do cliente
+      if (!email) return showError('forgotError', 'Por favor, preencha o campo Email.');
       try {
-        const response = await fetch('/api/contacts', {
+        // Log para depuração
+        console.log('Enviando recuperação de senha:', { email });
+        // Envia solicitação de recuperação para a API
+        const response = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const result = await response.json();
+        // Log para depuração
+        console.log('Resposta da recuperação:', result);
+        // Exibe mensagem retornada pela API
+        alert(result.message);
+      } catch (e) {
+        // Log e mensagem de erro para falhas de conexão
+        console.error('Erro na recuperação:', e.message);
+        showError('forgotError', 'Erro ao conectar ao servidor.');
+      }
+    });
+
+    // Evento de submissão do formulário de adição de usuário (admin)
+    document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      // Obtém os valores dos campos
+      const name = document.getElementById('addName').value.trim();
+      const email = document.getElementById('addEmail').value.trim();
+      const password = document.getElementById('addPassword').value;
+      const date = document.getElementById('addDate').value;
+      const specialDate = document.getElementById('addSpecialDate').value;
+      const role = document.getElementById('addRole').value;
+
+      // Validações básicas no lado do cliente
+      if (!name) return alert('Por favor, preencha o campo Nome.');
+      if (!email) return alert('Por favor, preencha o campo Email.');
+      if (!email.includes('@')) return alert('Email inválido.');
+      if (!password) return alert('Por favor, preencha o campo Senha.');
+      if (password.length < 6) return alert('A senha deve ter pelo menos 6 caracteres.');
+      if (!date) return alert('Por favor, selecione a Data de Nascimento.');
+      if (!specialDate) return alert('Por favor, selecione a Data Especial.');
+      if (!role) return alert('Por favor, selecione uma função.');
+
+      try {
+        // Log para depuração
+        console.log('Adicionando usuário:', { name, email, password, date, specialDate, role });
+        // Envia solicitação de adição de usuário para a API
+        const response = await fetch('/api/users', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-username': username
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ name, email, password, date, specialDate, role })
+        });
+        const result = await response.json();
+        // Log para depuração
+        console.log('Resposta da adição:', result);
+        // Verifica se a adição foi bem-sucedida
+        if (result.success) {
+          // Exibe mensagem de sucesso, atualiza a tabela e fecha o modal
+          alert('Usuário adicionado com sucesso!');
+          loadUsers();
+          bootstrap.Modal.getInstance(document.getElementById('addUserModal')).hide();
+          document.getElementById('addUserForm').reset();
+        } else {
+          // Exibe mensagem de erro
+          alert(result.message);
+        }
+      } catch (e) {
+        // Log e mensagem de erro para falhas de conexão
+        console.error('Erro ao adicionar usuário:', e.message);
+        alert('Erro ao adicionar usuário. Verifique se o servidor está rodando.');
+      }
+    });
+
+    // Evento para logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      // Remove o token e os dados do usuário do localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Recarrega a página para voltar à seção de autenticação
+      location.reload();
+    });
+
+    // Função para carregar a lista de usuários (admin)
+    async function loadUsers() {
+      try {
+        // Log para depuração
+        console.log('Carregando usuários...');
+        // Envia solicitação para obter a lista de usuários
+        const response = await fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const users = await response.json();
+        // Log para depuração
+        console.log('Usuários carregados:', users);
+        // Seleciona o corpo da tabela de usuários
+        const tbody = document.getElementById('usersTable');
+        tbody.innerHTML = '';
+        // Preenche a tabela com os dados dos usuários
+        users.forEach(u => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${u.name}</td>
+            <td>${u.email}</td>
+            <td>${u.role}</td>
+            <td>
+              <select onchange="updateRole('${u.id}', this.value)">
+                <option value="user" ${u.role === 'user' ? 'selected' : ''}>Usuário</option>
+                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
+              </select>
+              <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Excluir</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        // Log e mensagem de erro para falhas de conexão
+        console.error('Erro ao carregar usuários:', e.message);
+        alert('Erro ao carregar usuários');
+      }
+    }
+
+    // Função para atualizar a função de um usuário (admin)
+    async function updateRole(userId, role) {
+      try {
+        // Log para depuração
+        console.log('Atualizando função:', { userId, role });
+        // Envia solicitação para atualizar a função do usuário
+        const response = await fetch(`/api/users/${userId}/role`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ role })
+        });
+        const result = await response.json();
+        // Log para depuração
+        console.log('Resposta da atualização:', result);
+        // Exibe mensagem retornada pela API
+        alert(result.message);
+      } catch (e) {
+        // Log e mensagem de erro para falhas de conexão
+        console.error('Erro ao atualizar função:', e.message);
+        alert('Erro ao atualizar função');
+      }
+    }
+
+    // Função para excluir um usuário (admin)
+    async function deleteUser(userId) {
+      // Confirma a exclusão com o usuário
+      if (confirm('Tem certeza que deseja excluir este usuário?')) {
+        try {
+          // Log para depuração
+          console.log('Excluindo usuário:', userId);
+          // Envia solicitação para excluir o usuário
+          const response = await fetch(`/api/users/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          const result = await response.json();
+          // Log para depuração
+          console.log('Resposta da exclusão:', result);
+          // Verifica se a exclusão foi bem-sucedida
+          if (result.success) {
+            // Exibe mensagem de sucesso e atualiza a tabela
+            alert('Usuário excluído');
+            loadUsers();
+          } else {
+            // Exibe mensagem de erro
+            alert(result.message);
+          }
+        } catch (e) {
+          // Log e mensagem de erro para falhas de conexão
+          console.error('Erro ao excluir usuário:', e.message);
+          alert('Erro ao excluir usuário');
+        }
+      }
+    }
+
+    // Função para carregar a lista de contatos
+    async function loadContacts() {
+      try {
+        // Log para depuração
+        console.log('Carregando contatos...');
+        // Envia solicitação para obter a lista de contatos
+        const response = await fetch('/api/contacts', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const contacts = await response.json();
+        // Log para depuração
+        console.log('Contatos carregados:', contacts);
+        // Seleciona o corpo da tabela de contatos
+        const tbody = document.getElementById('contactsTable');
+        tbody.innerHTML = '';
+        // Preenche a tabela com os dados dos contatos
+        contacts.forEach(c => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${c.name}</td>
+            <td>${c.phone}</td>
+            <td>${c.email || ''}</td>
+            <td>${c.category}</td>
+            <td>${c.specialDate || ''}</td>
+            <td>
+              <button class="btn btn-warning btn-sm" onclick="editContact('${c.id}')">Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteContact('${c.id}')">Excluir</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        // Log e mensagem de erro para falhas de conexão
+        console.error('Erro ao carregar contatos:', e.message);
+        alert('Erro ao carregar contatos');
+      }
+    }
+
+    // Função para editar um contato
+    async function editContact(id) {
+      try {
+        // Log para depuração
+        console.log('Carregando contato:', id);
+        // Envia solicitação para obter os dados do contato
+        const response = await fetch(`/api/contacts/${id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const contact = await response.json();
+        // Log para depuração
+        console.log('Contato carregado:', contact);
+        // Preenche os campos do formulário com os dados do contato
+        document.getElementById('contactId').value = contact.id;
+        document.getElementById('contactName').value = contact.name;
+        document.getElementById('contactPhone').value = contact.phone;
+        document.getElementById('contactEmail').value = contact.email;
+        document.getElementById('contactCategory').value = contact.category;
+        document.getElementById('contactSpecialDate').value = contact.specialDate;
+        // Altera o título do modal para edição
+        document.getElementById('contactModalLabel').textContent = 'Editar Contato';
+        // Exibe o modal
+        new bootstrap.Modal(document.getElementById('contactModal')).show();
+      } catch (e) {
+        // Log e mensagem de erro para falhas de conexão
+        console.error('Erro ao carregar contato:', e.message);
+        alert('Erro ao carregar contato');
+      }
+    }
+
+    // Função para excluir um contato
+    async function deleteContact(id) {
+      // Confirma a exclusão com o usuário
+      if (confirm('Tem certeza que deseja excluir este contato?')) {
+        try {
+          // Log para depuração
+          console.log('Excluindo contato:', id);
+          // Envia solicitação para excluir o contato
+          const response = await fetch(`/api/contacts/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          const result = await response.json();
+          // Log para depuração
+          console.log('Resposta da exclusão:', result);
+          // Verifica se a exclusão foi bem-sucedida
+          if (result.success) {
+            // Exibe mensagem de sucesso e atualiza a tabela
+            alert('Contato excluído');
+            loadContacts();
+          } else {
+            // Exibe mensagem de erro
+            alert(result.message);
+          }
+        } catch (e) {
+          // Log e mensagem de erro para falhas de conexão
+          console.error('Erro ao excluir contato:', e.message);
+          alert('Erro ao excluir contato');
+        }
+      }
+    }
+
+    // Evento de submissão do formulário de contato
+    document.getElementById('contactForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      // Obtém o ID do contato (vazio para novo contato)
+      const id = document.getElementById('contactId').value;
+      // Obtém o telefone e valida o formato (+258 + 9 dígitos)
+      const phone = document.getElementById('contactPhone').value;
+      if (!phone.startsWith('+258') || phone.replace('+258', '').length !== 9) {
+        alert('Telefone deve começar com +258 e ter 9 dígitos');
+        return;
+      }
+      // Cria o objeto de contato com os dados do formulário
+      const contact = {
+        name: document.getElementById('contactName').value,
+        phone,
+        email: document.getElementById('contactEmail').value,
+        category: document.getElementById('contactCategory').value,
+        specialDate: document.getElementById('contactSpecialDate').value
+      };
+      try {
+        // Log para depuração
+        console.log('Salvando contato:', contact);
+        // Determina a URL e o método (POST para novo, PUT para edição)
+        const url = id ? `/api/contacts/${id}` : '/api/contacts';
+        const method = id ? 'PUT' : 'POST';
+        // Envia solicitação para salvar o contato
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
           body: JSON.stringify(contact)
         });
-        const data = await response.json();
-        console.log('Resposta ao adicionar contato:', data);
-        if (!response.ok) {
-          console.warn('Falha ao adicionar contato:', data.error);
-          showMessage('login', 'Error', data.error || 'Erro ao adicionar contato');
-          return;
-        }
-        document.getElementById('contactForm').reset();
-        loadContacts();
-      } catch (error) {
-        console.error('Erro ao adicionar contato:', error);
-        showMessage('login', 'Error', 'Erro de conexão com o servidor');
-      }
-    });
-
-    document.getElementById('userForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const username = localStorage.getItem('username');
-      console.log('Adicionando usuário por:', username);
-      if (!username) {
-        console.warn('Nenhum usuário logado');
-        showMessage('login', 'Error', 'Você precisa estar logado para adicionar usuários');
-        showLogin();
-        return;
-      }
-      const user = {
-        username: document.getElementById('userUsername').value,
-        password: document.getElementById('userPassword').value,
-        email: document.getElementById('userEmail').value,
-        role: document.getElementById('userRole').value
-      };
-      try {
-        const response = await fetch('/api/users', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-username': username
-          },
-          body: JSON.stringify(user)
-        });
-        const data = await response.json();
-        console.log('Resposta ao adicionar usuário:', data);
-        if (!response.ok) {
-          console.warn('Falha ao adicionar usuário:', data.error);
-          showMessage('login', 'Error', data.error || 'Erro ao adicionar usuário');
-          return;
-        }
-        document.getElementById('userForm').reset();
-        loadUsers();
-      } catch (error) {
-        console.error('Erro ao adicionar usuário:', error);
-        showMessage('login', 'Error', 'Erro de conexão com o servidor');
-      }
-    });
-
-    async function loadUsers() {
-      const username = localStorage.getItem('username');
-      console.log('Carregando usuários para:', username);
-      if (!username) {
-        console.warn('Nenhum usuário logado');
-        return;
-      }
-      try {
-        const response = await fetch('/api/users', {
-          headers: { 'x-username': username }
-        });
-        console.log('Resposta de usuários:', response.status);
-        const users = await response.json();
-        console.log('Usuários carregados:', users);
-        const userList = document.getElementById('userList');
-        userList.innerHTML = '';
-        users.forEach(user => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${user.username}</td>
-            <td>${user.email}</td>
-            <td>${user.role}</td>
-            <td><button class="btn btn-danger btn-sm" onclick="deleteUser('${user.username}')">Excluir</button></td>
-          `;
-          userList.appendChild(row);
-        });
-      } catch (error) {
-        console.error('Erro ao carregar usuários:', error);
-        showMessage('login', 'Error', 'Erro ao carregar usuários');
-      }
-    }
-
-    async function deleteUser(username) {
-      const currentUser = localStorage.getItem('username');
-      console.log('Excluindo usuário:', username);
-      try {
-        const response = await fetch(`/api/users/${username}`, {
-          method: 'DELETE',
-          headers: { 'x-username': currentUser }
-        });
-        console.log('Resposta da exclusão de usuário:', response.status);
-        if (response.ok) {
-          loadUsers();
+        const result = await response.json();
+        // Log para depuração
+        console.log('Resposta do salvamento:', result);
+        // Verifica se o salvamento foi bem-sucedido
+        if (result.success) {
+          // Exibe mensagem de sucesso, atualiza a tabela e fecha o modal
+          alert(id ? 'Contato atualizado' : 'Contato adicionado');
+          loadContacts();
+          bootstrap.Modal.getInstance(document.getElementById('contactModal')).hide();
+          document.getElementById('contactForm').reset();
+          document.getElementById('contactId').value = '';
+          document.getElementById('contactModalLabel').textContent = 'Adicionar Contato';
         } else {
-          const data = await response.json();
-          console.warn('Falha na exclusão de usuário:', data.error);
-          showMessage('login', 'Error', data.error || 'Erro ao excluir usuário');
+          // Exibe mensagem de erro
+          alert(result.message);
         }
-      } catch (error) {
-        console.error('Erro ao excluir usuário:', error);
-        showMessage('login', 'Error', 'Erro de conexão com o servidor');
+      } catch (e) {
+        // Log e mensagem de erro para falhas de conexão
+        console.error('Erro ao salvar contato:', e.message);
+        alert('Erro ao salvar contato');
       }
-    }
-
-    async function loadReport(reportType) {
-      const username = localStorage.getItem('username');
-      const role = localStorage.getItem('role');
-      console.log('Carregando relatório:', reportType);
-      if (!username) {
-        console.warn('Nenhum usuário logado');
-        showMessage('report', 'Error', 'Você precisa estar logado para visualizar relatórios');
-        showLogin();
-        return;
-      }
-      if (role !== 'admin') {
-        console.warn('Usuário não é admin');
-        showMessage('report', 'Error', 'Apenas administradores podem visualizar relatórios');
-        return;
-      }
-      try {
-        const response = await fetch(`/api/reports/${reportType}`, {
-          headers: { 'x-username': username }
-        });
-        console.log('Resposta do relatório:', response.status);
-        const data = await response.json();
-        console.log('Dados do relatório:', data);
-        if (!response.ok) {
-          console.warn('Falha ao carregar relatório:', data.error);
-          showMessage('report', 'Error', data.error || 'Erro ao carregar relatório');
-          return;
-        }
-        const reportContent = document.getElementById('reportContent');
-        reportContent.innerHTML = '';
-
-        if (reportType === 'category') {
-          const table = document.createElement('table');
-          table.className = 'table table-striped report-table';
-          table.innerHTML = `
-            <thead><tr><th>Categoria</th><th>Quantidade</th></tr></thead>
-            <tbody>${data.map(row => `<tr><td>${row.category || 'Sem categoria'}</td><td>${row.count}</td></tr>`).join('')}</tbody>
-          `;
-          reportContent.appendChild(table);
-        } else if (reportType === 'active-inactive') {
-          const table = document.createElement('table');
-          table.className = 'table table-striped report-table';
-          table.innerHTML = `
-            <thead><tr><th>Status</th><th>Quantidade</th></tr></thead>
-            <tbody>
-              <tr><td>Ativos</td><td>${data.active}</td></tr>
-              <tr><td>Inativos</td><td>${data.inactive}</td></tr>
-            </tbody>
-          `;
-          reportContent.appendChild(table);
-        } else if (reportType === 'recent-updates') {
-          const table = document.createElement('table');
-          table.className = 'table table-striped report-table';
-          table.innerHTML = `
-            <thead><tr><th>Nome</th><th>Data de Atualização</th></tr></thead>
-            <tbody>${data.map(row => `<tr><td>${row.name}</td><td>${new Date(row.updatedAt).toLocaleString()}</td></tr>`).join('')}</tbody>
-          `;
-          reportContent.appendChild(table);
-        } else if (reportType === 'birthdays') {
-          const table = document.createElement('table');
-          table.className = 'table table-striped report-table';
-          table.innerHTML = `
-            <thead><tr><th>Nome</th><th>Data</th><th>Tipo</th></tr></thead>
-            <tbody>${data.map(row => `<tr><td>${row.name}</td><td>${row.date}</td><td>${row.type}</td></tr>`).join('')}</tbody>
-          `;
-          reportContent.appendChild(table);
-        } else if (reportType === 'interaction-frequency') {
-          const table = document.createElement('table');
-          table.className = 'table table-striped report-table';
-          table.innerHTML = `
-            <thead><tr><th>Nome</th><th>Interações</th></tr></thead>
-            <tbody>${data.map(row => `<tr><td>${row.name}</td><td>${row.interactions}</td></tr>`).join('')}</tbody>
-          `;
-          reportContent.appendChild(table);
-        } else if (reportType === 'growth') {
-          const table = document.createElement('table');
-          table.className = 'table table-striped report-table';
-          table.innerHTML = `
-            <thead><tr><th>Mês</th><th>Quantidade</th></tr></thead>
-            <tbody>${data.map(row => `<tr><td>${row.month}</td><td>${row.count}</td></tr>`).join('')}</tbody>
-          `;
-          reportContent.appendChild(table);
-        } else if (reportType === 'contact-failures') {
-          const table = document.createElement('table');
-          table.className = 'table table-striped report-table';
-          table.innerHTML = `
-            <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Problemas</th></tr></thead>
-            <tbody>${data.map(row => `<tr><td>${row.name}</td><td>${row.phone}</td><td>${row.email}</td><td>${row.issues.join(', ')}</td></tr>`).join('')}</tbody>
-          `;
-          reportContent.appendChild(table);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar relatório:', error);
-        showMessage('report', 'Error', 'Erro de conexão com o servidor');
-      }
-    }
-
-    // Chatbot Logic
-    function loadChat() {
-      console.log('Carregando chat');
-      const username = localStorage.getItem('username');
-      if (!username) {
-        console.warn('Nenhum usuário logado');
-        showMessage('login', 'Error', 'Você precisa estar logado para acessar o chat');
-        showLogin();
-        return;
-      }
-      const chatMessages = document.getElementById('chatMessages');
-      let chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
-      let welcomeSent = localStorage.getItem('welcomeSent') === 'true';
-      if (!welcomeSent) {
-        const welcomeMessage = {
-          sender: 'bot',
-          text: 'Bem-vindo ao suporte da Agenda de Contatos! Como posso ajudar? (Limite: 5 perguntas)'
-        };
-        chatHistory.push(welcomeMessage);
-        localStorage.setItem('welcomeSent', 'true');
-      }
-      chatMessages.innerHTML = '';
-      chatHistory.forEach(msg => {
-        const div = document.createElement('div');
-        div.className = `chat-message ${msg.sender}`;
-        div.textContent = msg.text;
-        chatMessages.appendChild(div);
-      });
-      const chatCount = parseInt(localStorage.getItem('chatCount') || '0');
-      if (chatCount >= 5) {
-        document.getElementById('chatInput').disabled = true;
-        document.getElementById('chatInput').placeholder = 'Aguardando resposta do administrador...';
-        const limitMessage = {
-          sender: 'bot',
-          text: 'Limite de perguntas atingido. Um administrador responderá em breve.'
-        };
-        if (!chatHistory.some(msg => msg.text === limitMessage.text)) {
-          chatHistory.push(limitMessage);
-          const limitDiv = document.createElement('div');
-          limitDiv.className = 'chat-message bot';
-          limitDiv.textContent = limitMessage.text;
-          chatMessages.appendChild(limitDiv);
-        }
-      }
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    function getBotResponse(question) {
-      console.log('Processando pergunta:', question);
-      const lowerQuestion = question.toLowerCase();
-      if (lowerQuestion.includes('adicionar contato') || lowerQuestion.includes('novo contato')) {
-        return 'Para adicionar um contato, vá para a aba "Contatos", preencha os campos (nome, telefone, etc.) no formulário e clique em "Adicionar Contato".';
-      } else if (lowerQuestion.includes('quem sou') || lowerQuestion.includes('quem é')) {
-        const username = localStorage.getItem('username');
-        const role = localStorage.getItem('role');
-        return `Você é ${username}, com papel ${role === 'admin' ? 'Administrador' : 'Usuário'}.`;
-      } else if (lowerQuestion.includes('relatórios') || lowerQuestion.includes('acessar relatório')) {
-        return localStorage.getItem('role') === 'admin'
-          ? 'Para acessar relatórios, vá para a aba "Relatórios" e clique em um dos links, como "Contatos por Categoria".'
-          : 'Apenas administradores podem acessar relatórios. Contate um admin.';
-      } else if (lowerQuestion.includes('data de hoje') || lowerQuestion.includes('que dia')) {
-        return 'Hoje é 14 de maio de 2025.';
-      } else if (lowerQuestion.includes('este sistema') || lowerQuestion.includes('o que faz')) {
-        return 'Este é um sistema de Agenda de Contatos para gerenciar contatos, com funcionalidades como adicionar, excluir, interagir com contatos e gerar relatórios (para admins).';
-      } else {
-        return 'Desculpe, não entendi. Tente algo como "Como adicionar um contato?" ou "Quem sou eu?".';
-      }
-    }
-
-    document.getElementById('chatForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const chatInput = document.getElementById('chatInput');
-      const question = chatInput.value.trim();
-      if (!question) return;
-
-      let chatCount = parseInt(localStorage.getItem('chatCount') || '0');
-      let chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
-      const chatMessages = document.getElementById('chatMessages');
-      const username = localStorage.getItem('username');
-
-      // Adicionar mensagem do usuário
-      const userMessage = { sender: 'user', text: question };
-      chatHistory.push(userMessage);
-      const userDiv = document.createElement('div');
-      userDiv.className = 'chat-message user';
-      userDiv.textContent = question;
-      chatMessages.appendChild(userDiv);
-
-      // Processar resposta
-      if (chatCount < 5) {
-        chatCount++;
-        localStorage.setItem('chatCount', chatCount.toString());
-        const botResponse = getBotResponse(question);
-        const botMessage = { sender: 'bot', text: botResponse };
-        chatHistory.push(botMessage);
-        const botDiv = document.createElement('div');
-        botDiv.className = 'chat-message bot';
-        botDiv.textContent = botResponse;
-        chatMessages.appendChild(botDiv);
-        if (chatCount === 5) {
-          const limitMessage = { sender: 'bot', text: 'Limite de perguntas atingido. Um administrador responderá em breve.' };
-          chatHistory.push(limitMessage);
-          const limitDiv = document.createElement('div');
-          limitDiv.className = 'chat-message bot';
-          limitDiv.textContent = limitMessage.text;
-          chatMessages.appendChild(limitDiv);
-          document.getElementById('chatInput').disabled = true;
-          document.getElementById('chatInput').placeholder = 'Aguardando resposta do administrador...';
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ user: username, message: question }));
-          }
-        }
-      } else {
-        console.log('Mensagem para admin:', { user: username, message: question });
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ user: username, message: question }));
-        }
-        return; // Não permitir novas mensagens do usuário
-      }
-
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-      chatInput.value = '';
     });
 
-    // Inicializar página
-    console.log('Verificando estado inicial');
-    const username = localStorage.getItem('username');
-    const role = localStorage.getItem('role');
-    console.log('Estado do localStorage:', { username, role });
-    if (username && role) {
-      console.log('Usuário logado detectado, exibindo dashboard');
-      showDashboard();
-    } else {
-      console.log('Nenhum usuário logado, exibindo login');
-      showLogin();
+    // Função para carregar relatórios (admin)
+    async function loadReports() {
+      try {
+        // Log para depuração
+        console.log('Carregando relatórios...');
+        // Envia solicitação para obter os relatórios
+        const response = await fetch('/api/reports', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const reports = await response.json();
+        // Log para depuração
+        console.log('Relatórios carregados:', reports);
+        // Seleciona o contêiner de relatórios
+        const content = document.getElementById('reportsContent');
+        // Preenche o contêiner com os dados dos relatórios
+        content.innerHTML = `
+          <h5>Contatos por Categoria</h5>
+          <ul>
+            ${Object.entries(reports.category).map(([cat, count]) => `<li>${cat}: ${count}</li>`).join('')}
+          </ul>
+          <h5>Contatos Ativos vs Inativos</h5>
+          <p>Ativos: ${reports.active.active}, Inativos: ${reports.active.inactive}</p>
+          <h5>Atualizações Recentes</h5>
+          <ul>
+            ${reports.updates.map(u => `<li>${u.name} - ${new Date(u.updatedAt).toLocaleString()}</li>`).join('')}
+          </ul>
+          <h5>Datas Especiais</h5>
+          <ul>
+            ${reports.specialDates.map(d => `<li>${d.name} - ${d.specialDate}</li>`).join('')}
+          </ul>
+          <h5>Frequência de Interação</h5>
+          <ul>
+            ${reports.interactions.map(i => `<li>${i.name}: ${i.count} interações</li>`).join('')}
+          </ul>
+          <h5>Crescimento da Base</h5>
+          <ul>
+            ${reports.growth.map(g => `<li>${g.month}: ${g.count} contatos</li>`).join('')}
+          </ul>
+          <h5>Falhas de Contato</h5>
+          <ul>
+            ${reports.failures.map(f => `<li>${f.name}: ${f.issue}</li>`).join('')}
+          </ul>
+        `;
+      } catch (e) {
+        // Log e mensagem de erro para falhas de conexão
+        console.error('Erro ao carregar relatórios:', e.message);
+        alert('Erro ao carregar relatórios. Verifique se o servidor está rodando.');
+      }
     }
   </script>
 </body>

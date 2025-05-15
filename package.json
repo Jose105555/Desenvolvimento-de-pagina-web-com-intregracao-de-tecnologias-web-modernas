@@ -1,16 +1,15 @@
 {
-  "name": "agenda-contatos",
+  "name": "agenda-de-contatos",
   "version": "1.0.0",
-  "description": "Sistema de gerenciamento de contatos com relatórios",
-  "main": "server/app.js",
   "scripts": {
-    "start": "node server/app.js"
+    "start": "nodemon server/app.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "sqlite3": "^5.1.6",
-    "ws": "^8.13.0",
-    "uuid": "^9.0.0",
-    "bcrypt": "^5.1.0"
+    "express": "^4.19.2",
+    "ws": "^8.18.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
   }
-}
+} 

@@ -1,0 +1,94 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "name": "Jose",
+      "email": "jm@gmail.com",
+      "password": "123456",
+      "date": "2004-02-27",
+      "year": "3",
+      "specialDate": "2025-05-20",
+      "role": "admin"
+    },
+    {
+      "id": "2",
+      "name": "rhey",
+      "email": "rhey@gmail.com",
+      "password": "123456",
+      "date": "2025-05-31",
+      "year": "1",
+      "specialDate": "2025-05-23",
+      "role": "user"
+    },
+    {
+      "id": "3",
+      "name": "Rito",
+      "email": "ritp@gmail.com",
+      "password": "123456",
+      "date": "2025-05-31",
+      "specialDate": "2025-05-21",
+      "role": "user"
+    }
+  ],
+  "contacts": [
+    {
+      "id": "1",
+      "userId": "1",
+      "name": "Ivandro",
+      "phone": "+258848313234",
+      "email": "jm@gmail.com",
+      "category": "Família",
+      "specialDate": "2025-05-21",
+      "createdAt": "2025-05-15T13:19:20.945Z",
+      "updatedAt": "2025-05-15T13:19:20.946Z"
+    },
+    {
+      "id": "2",
+      "userId": "2",
+      "name": "rhey",
+      "phone": "+258848567758",
+      "email": "rhey@gmail.com",
+      "category": "Amigos",
+      "specialDate": "2025-05-29",
+      "createdAt": "2025-05-15T13:22:21.753Z",
+      "updatedAt": "2025-05-15T13:22:21.753Z"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "Jose",
+      "message": "jyu",
+      "timestamp": "2025-05-15T13:19:49.158Z",
+      "isBot": false,
+      "recipient": null
+    },
+    {
+      "sender": "rhey",
+      "message": "oi",
+      "timestamp": "2025-05-15T13:22:31.586Z",
+      "isBot": false,
+      "recipient": null
+    },
+    {
+      "sender": "Bot",
+      "message": "Olá, rhey! Bem-vindo à Agenda de Contatos!",
+      "recipient": "rhey",
+      "timestamp": "2025-05-15T13:22:31.586Z",
+      "isBot": true
+    },
+    {
+      "sender": "Jose",
+      "message": "oi",
+      "timestamp": "2025-05-15T13:23:16.651Z",
+      "isBot": false,
+      "recipient": null
+    }
+  ],
+  "interactions": [],
+  "categories": [
+    "Família",
+    "Trabalho",
+    "Amigos",
+    "Clientes"
+  ]
+}
